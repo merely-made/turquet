@@ -30,6 +30,7 @@ pub mod util;
 pub mod coords;
 pub mod aberr;
 pub mod angle;
+pub mod apparent;
 pub mod asteroid;
 pub mod atmos;
 pub mod binary_star;

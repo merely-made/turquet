@@ -34,6 +34,16 @@ Existing tests pass on current stable Rust. That is a compatibility receipt,
 not a general accuracy claim. Known upstream correctness reports and every
 public calculation still require a systematic numerical audit.
 
+The first Turquet-era module is `apparent` (2026-08-13): apparent geocentric
+ecliptic-of-date positions for the Sun, Moon, and eight planets through
+Pluto, composed entirely from inherited code with explicit light-time,
+aberration, nutation, and Pluto frame-precession stages, plus a leap-second
+UTC-to-TT conversion and explicit range errors. Measured against NASA/JPL
+Horizons at J2000, the 2024 total solar eclipse, and 2026-08-13, every body
+lands within 2 millidegrees, most exactly (`tests/apparent.rs`). That is a
+T3 down payment measured at chart precision, not yet the broad-cohort T3
+gate.
+
 ## Direction
 
 Turquet is intended to serve several consumers without embedding their policy:
