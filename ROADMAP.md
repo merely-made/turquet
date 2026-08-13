@@ -34,6 +34,27 @@ calculation.
 Done when invalid frame and time-scale combinations cannot enter the primary
 API as interchangeable floating-point values.
 
+## The verification lane
+
+Turquet ships two position providers and only one of them is a dependency.
+
+```text
+Position provider
+    +-- Analytical Turquet provider      (production; default feature set)
+    +-- ANISE + DE440s verifier provider (opt-in `verify` feature)
+```
+
+The verifier exists so the analytical engine is measured against an
+authority rather than against itself: it routes through ANISE and SOFA and
+never touches Turquet's own series. It is maintainer tooling. The kernel is
+supplied by the maintainer, its output is committed as vectors, and ordinary
+builds and CI compare against those vectors without acquiring a kernel. The
+default dependency tree is `hifitime` alone.
+
+```text
+cargo run --features verify --bin verify_cohort -- <kernel.bsp> [step_days]
+```
+
 ## T3: Analytical ephemeris
 
 - Complete the apparent geocentric and topocentric Sun, Moon, Mercury through

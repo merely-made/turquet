@@ -25,6 +25,11 @@ THE SOFTWARE.
 
 extern crate hifitime;
 
+#[cfg(feature = "verify")]
+extern crate anise;
+#[cfg(feature = "verify")]
+extern crate sofars;
+
 #[macro_use]
 pub mod util;
 
@@ -51,3 +56,5 @@ pub mod star;
 pub mod sun;
 pub mod time;
 pub mod transit;
+#[cfg(feature = "verify")]
+pub mod verify;
