@@ -20,10 +20,10 @@ assumptions dissolved in Turquet's favor:
 1. **It assumed the production path needs the `vsop87` and `sofars` crates.**
    Measured: Turquet's inherited VSOP87D tables match the `vsop87` crate's
    output exactly at millidegree rounding, and its inherited Meeus nutation
-   and ecliptic precession match SOFA-derived matrices at the same scale. The
-   `apparent` pipeline therefore carries **zero dependencies**. The target
-   was "a dependency tree containing Rust crates only"; the result is a
-   dependency tree containing no crates at all.
+   and ecliptic precession match SOFA-derived matrices at the same scale, so
+   the celestial math carries no dependency at all. The production tree is
+   `hifitime` alone, taken later the same day for time scales and the
+   maintained leap-second table.
 2. **It assumed the transcribed Meeus Pluto table.** Turquet's inherited
    Pluto coefficients carry more digits: 1 millidegree against Horizons
    versus 14 for the commonly transcribed table.
@@ -88,8 +88,10 @@ snapshot identity joins the typed metadata at T2.
 
 - Default charts require neither network, filesystem data, ANISE, nor native
   code: **met**.
-- The production dependency tree contains Rust crates only: **exceeded**
-  (empty).
+- The production dependency tree contains Rust crates only: **met**. It is
+  `hifitime` alone; the celestial math itself needs nothing. Note that
+  hifitime is MPL-2.0, so the tree is no longer MIT-only, though file-level
+  copyleft leaves Turquet's own source unaffected.
 - Sun through Pluto pass the defined JPL tolerance: **met at three instants**;
   the 1885 to 2099 cohort with wraparound, stations, lunar extremes,
   eclipses, and high-latitude and topocentric cases remains the open T3 gate.
