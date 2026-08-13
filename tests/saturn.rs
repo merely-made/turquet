@@ -22,8 +22,8 @@ THE SOFTWARE.
 
 #![allow(non_snake_case)]
 
-extern crate astro;
-use astro::*;
+extern crate turquet;
+use turquet::*;
 
 #[test]
 fn ring_elements() {

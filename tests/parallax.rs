@@ -20,9 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-extern crate astro;
+extern crate turquet;
 
-use astro::*;
+use turquet::*;
 
 #[test]
 pub fn topocent_eq_coords() {

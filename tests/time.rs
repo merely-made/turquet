@@ -23,9 +23,9 @@ THE SOFTWARE.
 #![allow(non_snake_case)]
 
 #[macro_use]
-extern crate astro;
+extern crate turquet;
 
-use astro::*;
+use turquet::*;
 
 #[test]
 fn sidreal_time() {

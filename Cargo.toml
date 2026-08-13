@@ -1,13 +1,12 @@
 [package]
-
-name = "astro"
-version = "2.0.0"
-authors = ["Saurav Sachidanand"]
-
+name = "turquet"
+version = "0.1.0"
+edition = "2015"
+authors = ["Saurav Sachidanand", "Turquet contributors"]
+description = "A pure-Rust celestial fact engine"
+repository = "https://github.com/merely-made/turquet"
+readme = "README.md"
 license = "MIT"
-
-repository = "https://www.github.com/saurvs/astro-rust"
-documentation = "https://saurvs.github.io/astro-rust"
-
-description = "Advanced algorithms for astronomy"
-keywords = ["astronomy", "algorithms", "ephemeris", "planet", "solar"]
+keywords = ["astronomy", "ephemeris", "astrometry", "celestial", "solar"]
+categories = ["science"]
+publish = false
