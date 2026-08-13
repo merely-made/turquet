@@ -33,10 +33,10 @@ Status of the analysis' seven steps at the time of writing:
 | Step | State |
 | --- | --- |
 | 1. Fork astro-rust as the maintained repository | Done: Turquet is that repository, one crate, history preserved |
-| 2. Typed calculation core | Open: this is roadmap T2 |
+| 2. Typed calculation core | Partial: time scales come from hifitime (`jde_tt_frm_epoch`, `Epoch` re-exported); typed angles, distances, frames, and observers remain open |
 | 3. Analytical body provider | Done at chart precision for ten bodies (light-time, aberration, nutation, Pluto range, retrograde); open: deflection, FK5/ICRS, IAU 2006/2000A, equatorial output, stations |
-| 4. Event algorithms over a position provider | Open: the architecture below fixes the shape for T4 |
-| 5. ANISE out of the shipped graph | Done in posture (no default build anywhere links ANISE); open in home (the verifier lane lives in Cleromancy's opt-in kernel feature, not yet in Turquet) |
+| 4. Event algorithms over a position provider | Open: the architecture below fixes the shape; `verify_cohort` is the first consumer of the two-lane split |
+| 5. ANISE out of the shipped graph | **Done**: the verifier lane lives here behind the opt-in `verify` feature; Cleromancy dropped its `ephemeris` feature and the anise, sha2, sofars, and ureq dependencies |
 | 6. Broad evidence | Open: three instants exist; this is the real T3 gate |
 | 7. Replace the consumer prototype | Done: Cleromancy's analytic feature is a rev-pinned Turquet adapter |
 
@@ -72,9 +72,10 @@ Completely static astronomy is not achievable, and pretending otherwise is
 the silent-degradation failure mode. The external residue, handled as
 versioned embedded snapshots with optional updates:
 
-- **Leap seconds** change occasionally. The embedded table currently ends at
-  2017-01-01 and its identity must appear in result disclosures, so a stale
-  snapshot is visible rather than wrong.
+- **Leap seconds** change occasionally. The table now comes from `hifitime`
+  rather than a hand-rolled constant, which delegates its maintenance to that
+  crate's release cadence rather than eliminating the staleness; the engine
+  revision in a disclosure is what pins which table was used.
 - **Precise Earth rotation** (UT1, polar motion) is observational. It gates
   topocentric precision work, not geocentric chart work.
 - **Artificial satellites** need current elements; **comets and asteroids**
@@ -93,11 +94,10 @@ snapshot identity joins the typed metadata at T2.
   the 1885 to 2099 cohort with wraparound, stations, lunar extremes,
   eclipses, and high-latitude and topocentric cases remains the open T3 gate.
 - IAU transformations pass SOFA vectors: **open**, T2.
-- ANISE exists solely as verifier and optional precision provider: **met in
-  posture**; relocating the verifier harness from the consumer's kernel
-  feature into Turquet tooling is the structural remainder and touches the
-  consumer's chart-form provisioning flow, so it is an explicit maintainer
-  go.
+- ANISE exists solely as verifier and optional precision provider: **met**.
+  The relocation landed the same day: `src/verify.rs` plus the
+  `verify_cohort` binary here, and Cleromancy's kernel feature, download
+  flow, and install UI removed.
 - Every receipt records engine revision, models, supported range, coordinate
   frame, time scale, and data snapshot: **partial** (revision, models, and
   range are disclosed today; frame and time scale are documented rather than
