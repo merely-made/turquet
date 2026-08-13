@@ -10,8 +10,8 @@
 extern crate turquet;
 
 use turquet::apparent::{
-    geocent_apparent_ecl_pos, is_retrograde, jde_tt_frm_utc, ApparentBody, ApparentError,
-    APPARENT_BODIES,
+    geocent_apparent_ecl_pos, is_retrograde, jde_tt_frm_epoch, jde_tt_frm_utc, ApparentBody,
+    ApparentError, Epoch, APPARENT_BODIES,
 };
 
 /// Worst allowed residual. Measured: the Sun, Moon, and eight planets land on
@@ -155,6 +155,18 @@ fn range_violations_are_errors_rather_than_degradation() {
     }
     // The same epoch is fine for a VSOP87D body.
     assert!(geocent_apparent_ecl_pos(&ApparentBody::Jupiter, far_future).is_ok());
+}
+
+#[test]
+fn the_typed_epoch_and_civil_field_paths_agree() {
+    let civil = jde_tt_frm_utc(2026, 8, 13, 12, 0, 0.0).expect("epoch after 1972");
+    let typed = jde_tt_frm_epoch(
+        Epoch::maybe_from_gregorian_utc(2026, 8, 13, 12, 0, 0, 0).expect("valid UTC epoch"),
+    );
+    assert_eq!(civil, typed);
+    // A TT epoch converts without the UTC leap-second offset.
+    let tt = jde_tt_frm_epoch(Epoch::from_gregorian_tai(2026, 8, 13, 12, 0, 0, 0));
+    assert!((typed - tt).abs() > 1e-6, "UTC and TAI epochs must differ");
 }
 
 #[test]

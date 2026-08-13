@@ -23,6 +23,8 @@ THE SOFTWARE.
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 
+extern crate hifitime;
+
 #[macro_use]
 pub mod util;
 

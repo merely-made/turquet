@@ -10,3 +10,8 @@ license = "MIT"
 keywords = ["astronomy", "ephemeris", "astrometry", "celestial", "solar"]
 categories = ["science"]
 publish = false
+
+[dependencies]
+# Time scales and the maintained leap-second table. MPL-2.0: file-level
+# copyleft, so Turquet's own MIT source is unaffected.
+hifitime = "4.3"

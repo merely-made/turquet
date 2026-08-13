@@ -21,9 +21,20 @@
 //! annual aberration from a numerically differentiated Earth velocity, and
 //! nutation in longitude. Solar gravitational deflection is not applied.
 //!
-//! Supported range: the UTC conversion is defined from 1972 (the leap-second
-//! era) and the Pluto series is stated for 1885 to 2099. Requests outside a
-//! defined range are errors, never silent degradation.
+//! Supported range: the UTC conversion is defined from 1972, when UTC gained
+//! leap seconds and stopped using rubber seconds, and the Pluto series is
+//! stated for 1885 to 2099. Requests outside a defined range are errors,
+//! never silent degradation.
+//!
+//! Time scales come from `hifitime`, which owns the UTC-to-TT conversion and
+//! the leap-second table. That delegates the table's maintenance to a crate
+//! that tracks IERS bulletins; it does not make the table immortal, so a
+//! result's disclosure should still name the engine revision it was computed
+//! with.
+
+/// The typed epoch, re-exported so a consumer gets time scales without taking
+/// its own `hifitime` dependency.
+pub use hifitime::Epoch;
 
 use angle;
 use lunar;
@@ -39,42 +50,11 @@ const VELOCITY_STEP_DAYS: f64 = 0.01;
 /// Central-difference step for the retrograde test, in days.
 const RETROGRADE_STEP_DAYS: f64 = 0.5;
 const J2000_JD: f64 = 2_451_545.0;
-/// TT - TAI, the fixed offset in seconds.
-const TT_MINUS_TAI_SECONDS: f64 = 32.184;
 /// The Pluto series' stated validity, in Julian years.
 const PLUTO_RANGE_YEARS: (f64, f64) = (1885.0, 2099.0);
-
-/// TAI - UTC in seconds, keyed by the Gregorian date the value took effect.
-const LEAP_SECONDS: [(i32, u32, u32, f64); 28] = [
-    (1972, 1, 1, 10.0),
-    (1972, 7, 1, 11.0),
-    (1973, 1, 1, 12.0),
-    (1974, 1, 1, 13.0),
-    (1975, 1, 1, 14.0),
-    (1976, 1, 1, 15.0),
-    (1977, 1, 1, 16.0),
-    (1978, 1, 1, 17.0),
-    (1979, 1, 1, 18.0),
-    (1980, 1, 1, 19.0),
-    (1981, 7, 1, 20.0),
-    (1982, 7, 1, 21.0),
-    (1983, 7, 1, 22.0),
-    (1985, 7, 1, 23.0),
-    (1988, 1, 1, 24.0),
-    (1990, 1, 1, 25.0),
-    (1991, 1, 1, 26.0),
-    (1992, 7, 1, 27.0),
-    (1993, 7, 1, 28.0),
-    (1994, 7, 1, 29.0),
-    (1996, 1, 1, 30.0),
-    (1997, 7, 1, 31.0),
-    (1999, 1, 1, 32.0),
-    (2006, 1, 1, 33.0),
-    (2009, 1, 1, 34.0),
-    (2012, 7, 1, 35.0),
-    (2015, 7, 1, 36.0),
-    (2017, 1, 1, 37.0),
-];
+/// UTC gained leap seconds on this date; earlier UTC used rubber seconds and
+/// is not the same time scale.
+const UTC_LEAP_ERA_START: (i32, u32, u32) = (1972, 1, 1);
 
 /// The ten bodies of the apparent pipeline, in conventional chart order.
 pub const APPARENT_BODIES: [ApparentBody; 10] = [
@@ -155,8 +135,18 @@ pub enum ApparentError {
     },
 }
 
-/// Julian day in Terrestrial Time for a proleptic-Gregorian UTC instant.
-/// Defined from 1972; earlier instants have no tabulated UTC offset here.
+/// Julian day in Terrestrial Time for a typed epoch, whatever time scale the
+/// epoch was built in. This is the entry point a typed caller should use; the
+/// civil-field helper below exists for parsers and fixtures.
+pub fn jde_tt_frm_epoch(epoch: Epoch) -> f64 {
+    epoch.to_jde_tt_days()
+}
+
+/// Julian day in Terrestrial Time for a Gregorian UTC instant.
+///
+/// Defined from 1972: earlier instants are refused rather than converted,
+/// because pre-1972 UTC is a different time scale rather than the same one
+/// with a smaller offset.
 pub fn jde_tt_frm_utc(
     year: i32,
     month: u32,
@@ -165,29 +155,30 @@ pub fn jde_tt_frm_utc(
     minute: u32,
     second: f64,
 ) -> Result<f64, ApparentError> {
-    let civil_ok = month >= 1
-        && month <= 12
-        && day >= 1
-        && day <= 31
-        && hour <= 23
-        && minute <= 59
-        && second >= 0.0
-        && second < 61.0;
-    if !civil_ok {
+    if (year, month, day) < UTC_LEAP_ERA_START {
+        return Err(ApparentError::BeforeLeapSecondEra);
+    }
+    if month > u32::from(u8::MAX)
+        || day > u32::from(u8::MAX)
+        || hour > u32::from(u8::MAX)
+        || minute > u32::from(u8::MAX)
+        || !(second >= 0.0 && second < 61.0)
+    {
         return Err(ApparentError::InvalidCivilTime);
     }
-    let mut leap = None;
-    for &(leap_year, leap_month, leap_day, seconds) in LEAP_SECONDS.iter() {
-        if (year, month, day) >= (leap_year, leap_month, leap_day) {
-            leap = Some(seconds);
-        }
-    }
-    let leap = match leap {
-        Some(seconds) => seconds,
-        None => return Err(ApparentError::BeforeLeapSecondEra),
-    };
-    let day_fraction = day as f64 + (hour as f64 + (minute as f64 + second / 60.0) / 60.0) / 24.0;
-    Ok(gregorian_julian_day(year, month, day_fraction) + (TT_MINUS_TAI_SECONDS + leap) / 86_400.0)
+    let whole_seconds = second.trunc();
+    let nanos = ((second - whole_seconds) * 1e9).round() as u32;
+    let epoch = Epoch::maybe_from_gregorian_utc(
+        year,
+        month as u8,
+        day as u8,
+        hour as u8,
+        minute as u8,
+        whole_seconds as u8,
+        nanos,
+    )
+    .map_err(|_| ApparentError::InvalidCivilTime)?;
+    Ok(jde_tt_frm_epoch(epoch))
 }
 
 /// Apparent geocentric ecliptic longitude and latitude on the true equinox of
@@ -317,17 +308,3 @@ fn normalize(vector: &[f64; 3]) -> [f64; 3] {
     ]
 }
 
-fn gregorian_julian_day(year: i32, month: u32, day_fraction: f64) -> f64 {
-    let (year, month) = if month <= 2 {
-        (year - 1, month + 12)
-    } else {
-        (year, month)
-    };
-    let century = (year as f64 / 100.0).floor();
-    let gregorian = 2.0 - century + (century / 4.0).floor();
-    (365.25 * (year as f64 + 4_716.0)).floor()
-        + (30.6001 * (month as f64 + 1.0)).floor()
-        + day_fraction
-        + gregorian
-        - 1_524.5
-}
