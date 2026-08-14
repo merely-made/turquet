@@ -15,13 +15,14 @@ publish = false
 default = []
 # Maintainer-only verification lane: reads a JPL kernel through ANISE and
 # SOFA to generate and check golden vectors. Never a consumer dependency.
-verify = ["dep:anise", "dep:sofars"]
+verify = ["dep:anise", "dep:sha2", "dep:sofars"]
 
 [dependencies]
 # Time scales and the maintained leap-second table. MPL-2.0: file-level
 # copyleft, so Turquet's own MIT source is unaffected.
 hifitime = "4.3"
 anise = { git = "https://github.com/merely-made/anise.git", rev = "71e973a245e6701e14a5d4c88a3c4e7dedbf7702", version = "=0.10.6", default-features = false, optional = true }
+sha2 = { version = "0.10", optional = true }
 sofars = { version = "=0.6.1", optional = true }
 
 [[bin]]

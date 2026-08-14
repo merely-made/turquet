@@ -9,12 +9,18 @@
 //! committed as vectors so ordinary builds and CI never touch a kernel.
 //!
 //! ```text
-//! cargo run --features verify --bin verify_cohort -- <kernel.bsp> [step_days]
+//! cargo run --release --features verify --bin verify_cohort -- //!     <kernel.bsp> [step_days] [--emit <path>] [--emit-step <days>]
 //! ```
+//!
+//! `--emit` writes a committed vector file holding the **oracle's** values,
+//! not the analytical engine's, so the test that reads it back is a
+//! comparison against JPL rather than the engine agreeing with itself.
 
 extern crate hifitime;
+extern crate sha2;
 extern crate turquet;
 
+use std::io::Write;
 use std::process;
 
 use hifitime::{Epoch, Unit};
@@ -26,20 +32,36 @@ use turquet::verify::JplVerifier;
 const FIRST_YEAR: i32 = 1885;
 const LAST_YEAR: i32 = 2099;
 const DEFAULT_STEP_DAYS: f64 = 90.0;
+/// Emit step. A prime number of days keeps the sampled epochs from aliasing
+/// with the year, the synodic month, or the sidereal month, so a modest file
+/// still covers a wide spread of solar and lunar phase.
+const DEFAULT_EMIT_STEP_DAYS: f64 = 149.0;
+const ANISE_REVISION: &str = "71e973a245e6701e14a5d4c88a3c4e7dedbf7702";
 
 fn main() {
-    let mut arguments = std::env::args().skip(1);
-    let kernel = match arguments.next() {
-        Some(path) => path,
+    let arguments = std::env::args().skip(1).collect::<Vec<_>>();
+    let positional = arguments
+        .iter()
+        .take_while(|value| !value.starts_with("--"))
+        .cloned()
+        .collect::<Vec<_>>();
+    let kernel = match positional.first() {
+        Some(path) => path.clone(),
         None => {
-            eprintln!("usage: verify_cohort <kernel.bsp> [step_days]");
+            eprintln!(
+                "usage: verify_cohort <kernel.bsp> [step_days] [--emit <path>] [--emit-step <days>]"
+            );
             process::exit(2);
         }
     };
-    let step_days = arguments
-        .next()
+    let step_days = positional
+        .get(1)
         .and_then(|value| value.parse::<f64>().ok())
         .unwrap_or(DEFAULT_STEP_DAYS);
+    let emit_path = flag_value(&arguments, "--emit");
+    let emit_step_days = flag_value(&arguments, "--emit-step")
+        .and_then(|value| value.parse::<f64>().ok())
+        .unwrap_or(DEFAULT_EMIT_STEP_DAYS);
 
     let verifier = match JplVerifier::open(&kernel) {
         Ok(verifier) => verifier,
@@ -139,6 +161,16 @@ fn main() {
         overall = overall.max(longitude).max(latitude);
     }
     println!("\nworst overall: {} millidegrees", overall);
+
+    if let Some(path) = emit_path {
+        match emit_vectors(&verifier, &kernel, &path, emit_step_days, start, end) {
+            Ok(count) => println!("wrote {} oracle vectors to {}", count, path),
+            Err(error) => {
+                eprintln!("could not write {}: {}", path, error);
+                process::exit(1);
+            }
+        }
+    }
 }
 
 /// Why a sample was skipped, so the summary distinguishes a working range
@@ -160,4 +192,114 @@ fn millidegrees(radians: f64) -> i64 {
 
 fn circular_millidegrees(actual: f64, expected: f64) -> i64 {
     (millidegrees(actual) - millidegrees(expected) + 180_000).rem_euclid(360_000) - 180_000
+}
+
+
+fn flag_value(arguments: &[String], flag: &str) -> Option<String> {
+    arguments
+        .iter()
+        .position(|value| value == flag)
+        .and_then(|index| arguments.get(index + 1))
+        .cloned()
+}
+
+/// Write the oracle's own positions, with the provenance needed to regenerate
+/// them, as a plain text table that stays diffable in Git.
+fn emit_vectors(
+    verifier: &JplVerifier,
+    kernel: &str,
+    path: &str,
+    step_days: f64,
+    start: Epoch,
+    end: Epoch,
+) -> std::io::Result<u32> {
+    let digest = sha256_file(kernel)?;
+    let mut file = std::io::BufWriter::new(std::fs::File::create(path)?);
+    writeln!(file, "# Turquet cohort vectors")?;
+    writeln!(
+        file,
+        "# oracle: NASA/JPL DE440s read by merely-made/anise@{}, IAU 1976/1980 frames from SOFARS 0.6.1",
+        ANISE_REVISION
+    )?;
+    writeln!(file, "# kernel-sha256: {}", digest)?;
+    writeln!(
+        file,
+        "# cohort: {}..{} at {} day steps, 12:00 UTC",
+        FIRST_YEAR, LAST_YEAR, step_days
+    )?;
+    writeln!(
+        file,
+        "# frame: geocentric apparent ecliptic of date; units: millidegrees"
+    )?;
+    writeln!(
+        file,
+        "# regenerate: cargo run --release --features verify --bin verify_cohort -- <kernel> --emit {}",
+        path
+    )?;
+    writeln!(
+        file,
+        "# pre-1972 labels are hifitime's UTC extrapolation; jde_tt is the authority"
+    )?;
+    writeln!(
+        file,
+        "# columns: utc, jde_tt, body, longitude, latitude (tab separated)"
+    )?;
+
+    let mut declined = 0_u32;
+    let mut written = 0_u32;
+    let mut epoch = start;
+    while epoch <= end {
+        let (year, month, day, hour, minute, second, _) = epoch.to_gregorian_utc();
+        for body in APPARENT_BODIES.iter() {
+            // Only emit where the analytical engine declares support. A
+            // vector outside its stated range is a contradiction, not a test.
+            if geocent_apparent_ecl_pos(body, epoch.to_jde_tt_days()).is_err() {
+                declined += 1;
+                continue;
+            }
+            let (longitude, latitude) = match verifier.geocent_apparent_ecl_pos(body, epoch) {
+                Ok(value) => value,
+                Err(_) => continue,
+            };
+            writeln!(
+                file,
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z\t{:.9}\t{}\t{}\t{}",
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                epoch.to_jde_tt_days(),
+                body.name(),
+                millidegrees(longitude),
+                millidegrees(latitude)
+            )?;
+            written += 1;
+        }
+        epoch = epoch + step_days * Unit::Day;
+    }
+    if declined > 0 {
+        println!(
+            "declined {} oracle samples outside the analytical engine's declared range",
+            declined
+        );
+    }
+    file.flush()?;
+    Ok(written)
+}
+
+fn sha256_file(path: &str) -> std::io::Result<String> {
+    use sha2::{Digest, Sha256};
+    let mut reader = std::io::BufReader::new(std::fs::File::open(path)?);
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = std::io::Read::read(&mut reader, &mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }

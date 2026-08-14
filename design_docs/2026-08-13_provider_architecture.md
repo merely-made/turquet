@@ -62,7 +62,9 @@ Rules:
 3. CI compares the analytical provider against **committed** vectors, so CI
    downloads no kernel. Regenerating vectors is a maintainer act with the
    kernel present, and the vector files record the kernel digest and ANISE
-   revision that produced them.
+   revision that produced them. **Landed 2026-08-13**:
+   `tests/vectors/cohort_de440s.tsv` holds 5,277 oracle values and
+   `tests/cohort_vectors.rs` checks them without the `verify` feature.
 4. Event algorithms are written once, generic over the provider, which makes
    every event receipt reproducible through either lane.
 
