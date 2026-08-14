@@ -66,6 +66,13 @@ cargo run --features verify --bin verify_cohort -- <kernel.bsp> [step_days]
 Done when the Rust-only provider meets documented tolerances and every result
 records its model and supported range.
 
+**Date cohort measured 2026-08-13** (`receipts/2026-08-13_t3_cohort_de440s.md`):
+112,137 body-samples across 1885 to 2099 at 7-day steps agree with the DE440s
+oracle to within 5 millidegrees, every body except the Moon within 1, with
+zero analytical or reference failures and every skip accounted as Pluto
+beyond its declared range. The observer cohort, targeted stations, lunar
+extremes, and eclipse instants remain open.
+
 ## T4: Celestial events
 
 - Complete the useful missing Meeus algorithms.

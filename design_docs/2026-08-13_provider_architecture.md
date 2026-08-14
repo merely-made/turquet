@@ -37,7 +37,7 @@ Status of the analysis' seven steps at the time of writing:
 | 3. Analytical body provider | Done at chart precision for ten bodies (light-time, aberration, nutation, Pluto range, retrograde); open: deflection, FK5/ICRS, IAU 2006/2000A, equatorial output, stations |
 | 4. Event algorithms over a position provider | Open: the architecture below fixes the shape; `verify_cohort` is the first consumer of the two-lane split |
 | 5. ANISE out of the shipped graph | **Done**: the verifier lane lives here behind the opt-in `verify` feature; Cleromancy dropped its `ephemeris` feature and the anise, sha2, sofars, and ureq dependencies |
-| 6. Broad evidence | Open: three instants exist; this is the real T3 gate |
+| 6. Broad evidence | Date cohort **done** (112,137 samples, 1885-2099, worst 5 millidegrees; `receipts/2026-08-13_t3_cohort_de440s.md`); observer cohort and targeted cases open |
 | 7. Replace the consumer prototype | Done: Cleromancy's analytic feature is a rev-pinned Turquet adapter |
 
 ## The two-provider architecture
@@ -92,9 +92,11 @@ snapshot identity joins the typed metadata at T2.
   `hifitime` alone; the celestial math itself needs nothing. Note that
   hifitime is MPL-2.0, so the tree is no longer MIT-only, though file-level
   copyleft leaves Turquet's own source unaffected.
-- Sun through Pluto pass the defined JPL tolerance: **met at three instants**;
-  the 1885 to 2099 cohort with wraparound, stations, lunar extremes,
-  eclipses, and high-latitude and topocentric cases remains the open T3 gate.
+- Sun through Pluto pass the defined JPL tolerance: **met across the date
+  cohort**. 112,137 body-samples over 1885 to 2099 at 7-day steps hold within
+  5 millidegrees, with the Moon the only body above 1. Targeted stations,
+  lunar extremes, eclipse instants, and the high-latitude and topocentric
+  cases remain open, since those need the observer layer.
 - IAU transformations pass SOFA vectors: **open**, T2.
 - ANISE exists solely as verifier and optional precision provider: **met**.
   The relocation landed the same day: `src/verify.rs` plus the
