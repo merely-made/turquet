@@ -9,7 +9,6 @@ readme = "README.md"
 license = "MIT"
 keywords = ["astronomy", "ephemeris", "astrometry", "celestial", "solar"]
 categories = ["science"]
-publish = false
 
 [features]
 default = []
