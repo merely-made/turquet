@@ -25,7 +25,7 @@ THE SOFTWARE.
 #[macro_use]
 extern crate turquet;
 
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn sidreal_time() {

@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 extern crate turquet;
 
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn eq_coords_frm_motion() {

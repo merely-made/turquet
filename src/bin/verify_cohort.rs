@@ -24,7 +24,8 @@ use std::io::Write;
 use std::process;
 
 use hifitime::{Epoch, Unit};
-use turquet::apparent::{geocent_apparent_ecl_pos, ApparentError, APPARENT_BODIES};
+use turquet::apparent::{ApparentError, ApparentSky, APPARENT_BODIES};
+use turquet::foundation::{JulianDate, TerrestrialTime};
 use turquet::verify::JplVerifier;
 
 /// The cohort's bounds, chosen as the intersection of the Pluto series'
@@ -87,9 +88,10 @@ fn main() {
 
     let mut epoch = start;
     while epoch <= end {
-        let jde_tt = epoch.to_jde_tt_days();
+        let typed_epoch = JulianDate::<TerrestrialTime>::from_epoch(epoch);
+        let sky = ApparentSky::at(typed_epoch);
         for (index, body) in APPARENT_BODIES.iter().enumerate() {
-            let analytical = match geocent_apparent_ecl_pos(body, jde_tt) {
+            let analytical = match sky.position(*body) {
                 Ok(value) => value,
                 Err(error) => {
                     match error {
@@ -109,8 +111,11 @@ fn main() {
                     continue;
                 }
             };
-            let longitude_error = circular_millidegrees(analytical.0, reference.0);
-            let latitude_error = millidegrees(analytical.1) - millidegrees(reference.1);
+            let analytical_direction = analytical.value().direction();
+            let longitude_error =
+                circular_millidegrees(analytical_direction.longitude().radians(), reference.0);
+            let latitude_error =
+                millidegrees(analytical_direction.latitude().radians()) - millidegrees(reference.1);
             if longitude_error.abs() > worst[index].0 || latitude_error.abs() > worst[index].1 {
                 let label = format!("{}", epoch);
                 if longitude_error.abs() > worst[index].0 {
@@ -147,7 +152,10 @@ fn main() {
     if !first_skip.is_empty() {
         println!("first skip: {}", first_skip);
     }
-    println!("{:<9} {:>12} {:>12}  {}", "body", "worst d-lon", "worst d-lat", "at");
+    println!(
+        "{:<9} {:>12} {:>12}  {}",
+        "body", "worst d-lon", "worst d-lat", "at"
+    );
     let mut overall = 0_i64;
     for (index, body) in APPARENT_BODIES.iter().enumerate() {
         let (longitude, latitude, ref at) = worst[index];
@@ -193,7 +201,6 @@ fn millidegrees(radians: f64) -> i64 {
 fn circular_millidegrees(actual: f64, expected: f64) -> i64 {
     (millidegrees(actual) - millidegrees(expected) + 180_000).rem_euclid(360_000) - 180_000
 }
-
 
 fn flag_value(arguments: &[String], flag: &str) -> Option<String> {
     arguments
@@ -250,10 +257,11 @@ fn emit_vectors(
     let mut epoch = start;
     while epoch <= end {
         let (year, month, day, hour, minute, second, _) = epoch.to_gregorian_utc();
+        let sky = ApparentSky::at(JulianDate::<TerrestrialTime>::from_epoch(epoch));
         for body in APPARENT_BODIES.iter() {
             // Only emit where the analytical engine declares support. A
             // vector outside its stated range is a contradiction, not a test.
-            if geocent_apparent_ecl_pos(body, epoch.to_jde_tt_days()).is_err() {
+            if sky.position(*body).is_err() {
                 declined += 1;
                 continue;
             }

@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 extern crate turquet;
 
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn true_anom_and_rad_vec() {

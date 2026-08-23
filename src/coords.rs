@@ -189,8 +189,8 @@ Computes ecliptic coordinates from equatorial coordinates
 #[macro_export]
 macro_rules! ecl_frm_eq {
     ($asc: expr, $dec: expr, $oblq_eclip: expr) => {{
-        ($crate::coords::ecl_long_frm_eq($asc, $dec, $oblq_eclip),
-         $crate::coords::ecl_lat_frm_eq($asc, $dec, $oblq_eclip))
+        ($crate::compat::coords::ecl_long_frm_eq($asc, $dec, $oblq_eclip),
+         $crate::compat::coords::ecl_lat_frm_eq($asc, $dec, $oblq_eclip))
     }};
 }
 
@@ -263,8 +263,8 @@ Computes equatorial coordinates from ecliptic coordinates
 #[macro_export]
 macro_rules! eq_frm_ecl {
     ($ecl_long: expr, $ecl_lat: expr, $oblq_eclip: expr) => {{
-        ($crate::coords::asc_frm_ecl($ecl_long, $ecl_lat, $oblq_eclip),
-         $crate::coords::dec_frm_ecl($ecl_long, $ecl_lat, $oblq_eclip))
+        ($crate::compat::coords::asc_frm_ecl($ecl_long, $ecl_lat, $oblq_eclip),
+         $crate::compat::coords::dec_frm_ecl($ecl_long, $ecl_lat, $oblq_eclip))
     }};
 }
 
@@ -332,8 +332,8 @@ Computes local horizontal coordinates from equatorial coordinates
 #[macro_export]
 macro_rules! loc_hz_frm_eq {
     ($hour_angle: expr, $dec: expr, $observer_lat: expr) => {{
-        ($crate::coords::az_frm_eq($hour_angle, $dec, $observer_lat),
-         $crate::coords::alt_frm_eq($hour_angle, $dec, $observer_lat))
+        ($crate::compat::coords::az_frm_eq($hour_angle, $dec, $observer_lat),
+         $crate::compat::coords::alt_frm_eq($hour_angle, $dec, $observer_lat))
     }};
 }
 
@@ -451,8 +451,8 @@ standard equinox of B1950.0.
 #[macro_export]
 macro_rules! gal_frm_eq {
     ($asc: expr, $dec: expr) => {{
-        ($crate::coords::gal_long_frm_eq($asc, $dec),
-         $crate::coords::gal_lat_frm_eq($asc, $dec))
+        ($crate::compat::coords::gal_long_frm_eq($asc, $dec),
+         $crate::compat::coords::gal_lat_frm_eq($asc, $dec))
     }};
 }
 
@@ -528,7 +528,7 @@ equinox of  B1950.0.
 #[macro_export]
 macro_rules! eq_frm_gal {
     ($gal_long: expr, $gal_lat: expr) => {{
-        ($crate::coords::asc_frm_gal($gal_long, $gal_lat),
-         $crate::coords::dec_frm_gal($gal_long, $gal_lat))
+        ($crate::compat::coords::asc_frm_gal($gal_long, $gal_lat),
+         $crate::compat::coords::dec_frm_gal($gal_long, $gal_lat))
     }};
 }

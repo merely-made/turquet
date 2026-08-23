@@ -15,9 +15,10 @@ extern crate turquet;
 
 use std::collections::BTreeMap;
 
-use turquet::apparent::{geocent_apparent_ecl_pos, ApparentBody, APPARENT_BODIES};
+use turquet::apparent::{ApparentBody, ApparentSky, APPARENT_BODIES};
+use turquet::foundation::{JulianDate, TerrestrialTime};
 
-/// Ceiling for a committed vector. Measured worst across this file is 4
+/// Ceiling for a committed vector. Measured worst across this file is 3
 /// millidegrees, on the Moon; every other body holds 1 or better.
 const MAX_ERROR_MILLIDEGREES: i64 = 10;
 
@@ -37,6 +38,8 @@ fn committed_de440s_vectors_hold() {
     let mut worst_label = String::new();
     let mut per_body: BTreeMap<&str, i64> = BTreeMap::new();
     let mut failures = Vec::new();
+    let mut cached_epoch = None;
+    let mut cached_sky = None;
 
     for line in VECTORS.lines() {
         if line.starts_with('#') || line.trim().is_empty() {
@@ -51,8 +54,21 @@ fn committed_de440s_vectors_hold() {
         let expected_longitude: i64 = fields[3].parse().expect("longitude");
         let expected_latitude: i64 = fields[4].parse().expect("latitude");
 
-        let (longitude, latitude) = geocent_apparent_ecl_pos(&body, jde_tt)
-            .unwrap_or_else(|_| panic!("vector epoch {} is inside {}'s range", fields[0], fields[2]));
+        let epoch =
+            JulianDate::<TerrestrialTime>::from_julian_day(jde_tt).expect("finite TT vector epoch");
+        if cached_epoch != Some(jde_tt) {
+            cached_epoch = Some(jde_tt);
+            cached_sky = Some(ApparentSky::at(epoch));
+        }
+        let state = cached_sky
+            .expect("sky cached for vector epoch")
+            .position(body)
+            .unwrap_or_else(|_| {
+                panic!("vector epoch {} is inside {}'s range", fields[0], fields[2])
+            });
+        let direction = state.value().direction();
+        let longitude = direction.longitude().radians();
+        let latitude = direction.latitude().radians();
 
         let longitude_error = circular_error(millidegrees(longitude), expected_longitude);
         let latitude_error = millidegrees(latitude) - expected_latitude;

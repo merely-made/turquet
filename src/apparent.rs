@@ -5,15 +5,16 @@
 //!
 //! This is the first Turquet-era module and the T3 down payment: one pipeline
 //! that composes the inherited VSOP87D planetary theory, the partial
-//! ELP-2000/82 lunar solution, the analytical Pluto series, the IAU 1980
+//! ELP-2000/82 lunar solution, the analytical Pluto series, IAU 2006/2000A
 //! nutation, and the inherited ecliptic precession into apparent positions on
-//! the true equinox of date. No external crate and no data file is involved.
+//! the true equinox of date. No runtime data file is involved.
 //!
 //! Validation authority: NASA/JPL Horizons observer-table quantity 31
 //! (`tests/apparent.rs`), at J2000, the 2024-04-08 total solar eclipse, and
 //! 2026-08-13. Measured residuals: the Sun, Moon, and eight planets agree
-//! with Horizons at millidegree rounding (worst 2 millidegrees); Pluto agrees
-//! within 14 millidegrees, limited by its truncated series.
+//! with Horizons at millidegree rounding (worst 2 millidegrees). A committed
+//! 5,277-vector DE440s cohort spanning 1885 through 2099 is held below a
+//! 10-millidegree gate (measured worst 3 millidegrees).
 //!
 //! Explicit stages, per the roadmap: heliocentric position of date
 //! (ELP-2000/82 is directly geocentric; Pluto is precessed from its J2000
@@ -21,10 +22,10 @@
 //! annual aberration from a numerically differentiated Earth velocity, and
 //! nutation in longitude. Solar gravitational deflection is not applied.
 //!
-//! Supported range: the UTC conversion is defined from 1972, when UTC gained
-//! leap seconds and stopped using rubber seconds, and the Pluto series is
-//! stated for 1885 to 2099. Requests outside a defined range are errors,
-//! never silent degradation.
+//! Supported range: the Pluto series is stated for 1885 to 2099. Typed TT
+//! inputs can represent earlier epochs directly. The compatibility UTC-field
+//! conversion is defined from 1972, when UTC gained leap seconds and stopped
+//! using rubber seconds. Requests outside a defined range are errors.
 //!
 //! Time scales come from `hifitime`, which owns the UTC-to-TT conversion and
 //! the leap-second table. That delegates the table's maintenance to a crate
@@ -32,13 +33,13 @@
 //! result's disclosure should still name the engine revision it was computed
 //! with.
 
-/// The typed epoch, re-exported so a consumer gets time scales without taking
-/// its own `hifitime` dependency.
-pub use hifitime::Epoch;
-
 use angle;
+use foundation::{
+    Accuracy, AccuracyEvidence, Angle, Direction, Distance, JulianDate, Latitude, Longitude, Model,
+    Modelled, State, TerrestrialTime, TrueEclipticEquinoxOfDate,
+};
 use lunar;
-use nutation;
+use orientation;
 use planet;
 use pluto;
 use precess;
@@ -55,6 +56,50 @@ const PLUTO_RANGE_YEARS: (f64, f64) = (1885.0, 2099.0);
 /// UTC gained leap seconds on this date; earlier UTC used rubber seconds and
 /// is not the same time scale.
 const UTC_LEAP_ERA_START: (i32, u32, u32) = (1972, 1, 1);
+
+/// The composed analytical model used by [`position`].
+pub const ANALYTICAL_APPARENT: Model = Model::new("Turquet analytical apparent ecliptic", "2");
+
+/// Epoch-scoped apparent calculation context.
+///
+/// The full IAU 2000A nutation series is evaluated once and reused for every
+/// body requested at this epoch. A chart or sky view should construct one of
+/// these rather than call [`position`] repeatedly.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ApparentSky {
+    epoch: JulianDate<TerrestrialTime>,
+    nutation_longitude: Angle,
+}
+
+impl ApparentSky {
+    pub fn at(epoch: JulianDate<TerrestrialTime>) -> Self {
+        Self {
+            epoch,
+            nutation_longitude: orientation::nutation(epoch).value().longitude(),
+        }
+    }
+
+    pub fn epoch(self) -> JulianDate<TerrestrialTime> {
+        self.epoch
+    }
+
+    pub fn position(
+        self,
+        body: ApparentBody,
+    ) -> Result<Modelled<State<TrueEclipticEquinoxOfDate>>, ApparentError> {
+        let (longitude, latitude, distance) =
+            calculate(&body, self.epoch, self.nutation_longitude)?;
+        let direction = Direction::new(
+            Longitude::from_radians(longitude).expect("analytical longitude is finite"),
+            Latitude::from_radians(latitude).expect("analytical latitude is finite and physical"),
+        );
+        Ok(Modelled::new(
+            State::new(self.epoch, direction, distance),
+            ANALYTICAL_APPARENT,
+            apparent_accuracy(),
+        ))
+    }
+}
 
 /// The ten bodies of the apparent pipeline, in conventional chart order.
 pub const APPARENT_BODIES: [ApparentBody; 10] = [
@@ -135,19 +180,58 @@ pub enum ApparentError {
     },
 }
 
-/// Julian day in Terrestrial Time for a typed epoch, whatever time scale the
-/// epoch was built in. This is the entry point a typed caller should use; the
-/// civil-field helper below exists for parsers and fixtures.
-pub fn jde_tt_frm_epoch(epoch: Epoch) -> f64 {
-    epoch.to_jde_tt_days()
+/// Apparent geocentric state on the true ecliptic and equinox of date.
+///
+/// The epoch type requires TT and the state type records the output frame.
+/// Distances are geocentric. Accuracy metadata reports the measured angular
+/// ceiling of the existing Horizons cohort; it is not a distance claim.
+pub fn position(
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+) -> Result<Modelled<State<TrueEclipticEquinoxOfDate>>, ApparentError> {
+    ApparentSky::at(epoch).position(body)
 }
 
-/// Julian day in Terrestrial Time for a Gregorian UTC instant.
+/// Whether apparent ecliptic longitude is decreasing across a one-day
+/// central-difference interval.
+pub fn is_retrograde(
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+) -> Result<bool, ApparentError> {
+    let before_epoch = epoch
+        .offset_days(-RETROGRADE_STEP_DAYS)
+        .expect("finite fixed sample offset");
+    let before = ApparentSky::at(before_epoch)
+        .position(body)?
+        .value()
+        .direction()
+        .longitude()
+        .radians();
+    let after_epoch = epoch
+        .offset_days(RETROGRADE_STEP_DAYS)
+        .expect("finite fixed sample offset");
+    let after = ApparentSky::at(after_epoch)
+        .position(body)?
+        .value()
+        .direction()
+        .longitude()
+        .radians();
+    let two_pi = 2.0 * ::std::f64::consts::PI;
+    let delta =
+        (after - before + ::std::f64::consts::PI).rem_euclid(two_pi) - ::std::f64::consts::PI;
+    Ok(delta < 0.0)
+}
+
+pub(crate) fn legacy_jde_tt_frm_epoch(epoch: hifitime::Epoch) -> f64 {
+    JulianDate::<TerrestrialTime>::from_epoch(epoch).day()
+}
+
+/// Compatibility conversion from Gregorian UTC fields to TT Julian day.
 ///
 /// Defined from 1972: earlier instants are refused rather than converted,
 /// because pre-1972 UTC is a different time scale rather than the same one
 /// with a smaller offset.
-pub fn jde_tt_frm_utc(
+pub(crate) fn legacy_jde_tt_frm_utc(
     year: i32,
     month: u32,
     day: u32,
@@ -168,7 +252,7 @@ pub fn jde_tt_frm_utc(
     }
     let whole_seconds = second.trunc();
     let nanos = ((second - whole_seconds) * 1e9).round() as u32;
-    let epoch = Epoch::maybe_from_gregorian_utc(
+    let epoch = hifitime::Epoch::maybe_from_gregorian_utc(
         year,
         month as u8,
         day as u8,
@@ -178,18 +262,41 @@ pub fn jde_tt_frm_utc(
         nanos,
     )
     .map_err(|_| ApparentError::InvalidCivilTime)?;
-    Ok(jde_tt_frm_epoch(epoch))
+    Ok(legacy_jde_tt_frm_epoch(epoch))
 }
 
-/// Apparent geocentric ecliptic longitude and latitude on the true equinox of
-/// date, in radians, with longitude normalized to `[0, 2pi)`.
-pub fn geocent_apparent_ecl_pos(
+pub(crate) fn legacy_geocent_apparent_ecl_pos(
     body: &ApparentBody,
     jde_tt: f64,
 ) -> Result<(f64, f64), ApparentError> {
+    let epoch = JulianDate::<TerrestrialTime>::from_julian_day(jde_tt)
+        .expect("legacy Julian day must be finite");
+    let state = position(*body, epoch)?;
+    let direction = state.value().direction();
+    Ok((
+        direction.longitude().radians(),
+        direction.latitude().radians(),
+    ))
+}
+
+pub(crate) fn legacy_is_retrograde(
+    body: &ApparentBody,
+    jde_tt: f64,
+) -> Result<bool, ApparentError> {
+    let epoch = JulianDate::<TerrestrialTime>::from_julian_day(jde_tt)
+        .expect("legacy Julian day must be finite");
+    is_retrograde(*body, epoch)
+}
+
+fn calculate(
+    body: &ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    nutation_longitude: Angle,
+) -> Result<(f64, f64, Distance), ApparentError> {
+    let jde_tt = epoch.day();
     check_range(body, jde_tt)?;
     if let ApparentBody::Moon = *body {
-        return Ok(moon_apparent(jde_tt));
+        return Ok(moon_apparent(epoch, nutation_longitude));
     }
 
     let earth = planet_rect(&planet::Planet::Earth, jde_tt);
@@ -219,30 +326,38 @@ pub fn geocent_apparent_ecl_pos(
     ]);
 
     // Mean equinox of date to true equinox of date.
-    let (nut_in_long, _) = nutation::nutation(jde_tt);
+    let nut_in_long = nutation_longitude.radians();
     let longitude = angle::limit_to_two_PI(aberrated[1].atan2(aberrated[0]) + nut_in_long);
     let latitude = aberrated[2].asin();
-    Ok((longitude, latitude))
-}
-
-/// Whether the body's apparent longitude is decreasing at the epoch, from a
-/// central difference one half day on either side. The range check therefore
-/// covers the full sampled interval.
-pub fn is_retrograde(body: &ApparentBody, jde_tt: f64) -> Result<bool, ApparentError> {
-    let before = geocent_apparent_ecl_pos(body, jde_tt - RETROGRADE_STEP_DAYS)?.0;
-    let after = geocent_apparent_ecl_pos(body, jde_tt + RETROGRADE_STEP_DAYS)?.0;
-    let two_pi = 2.0 * ::std::f64::consts::PI;
-    let delta = (after - before + ::std::f64::consts::PI).rem_euclid(two_pi) - ::std::f64::consts::PI;
-    Ok(delta < 0.0)
+    let distance = Distance::from_astronomical_units(norm(&offset))
+        .expect("analytical distance is finite and nonnegative");
+    Ok((longitude, latitude, distance))
 }
 
 /// The Moon from the inherited partial ELP-2000/82: already geocentric on the
 /// mean equinox of date, so no light-time loop or aberration term is added;
 /// apparent position is the series value plus nutation.
-fn moon_apparent(jde_tt: f64) -> (f64, f64) {
-    let (point, _distance_km) = lunar::geocent_ecl_pos(jde_tt);
-    let (nut_in_long, _) = nutation::nutation(jde_tt);
-    (angle::limit_to_two_PI(point.long + nut_in_long), point.lat)
+fn moon_apparent(
+    epoch: JulianDate<TerrestrialTime>,
+    nutation_longitude: Angle,
+) -> (f64, f64, Distance) {
+    let (point, distance_km) = lunar::geocent_ecl_pos(epoch.day());
+    let nut_in_long = nutation_longitude.radians();
+    (
+        angle::limit_to_two_PI(point.long + nut_in_long),
+        point.lat,
+        Distance::from_kilometers(distance_km).expect("lunar distance is finite and nonnegative"),
+    )
+}
+
+fn apparent_accuracy() -> Accuracy {
+    Accuracy::new(
+        Angle::from_degrees(0.010).expect("positive finite tolerance"),
+        AccuracyEvidence::ExternalComparison,
+        "NASA/JPL Horizons",
+        "5,277 DE440s vectors across 1885-2099; angular only",
+    )
+    .expect("positive apparent accuracy")
 }
 
 fn check_range(body: &ApparentBody, jde_tt: f64) -> Result<(), ApparentError> {
@@ -301,10 +416,5 @@ fn normalize(vector: &[f64; 3]) -> [f64; 3] {
     if length == 0.0 {
         return *vector;
     }
-    [
-        vector[0] / length,
-        vector[1] / length,
-        vector[2] / length,
-    ]
+    [vector[0] / length, vector[1] / length, vector[2] / length]
 }
-

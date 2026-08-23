@@ -1,8 +1,8 @@
 # Public calculation audit
 
-This is the T1 boundary map for Turquet 0.1.1. It inventories every exported
-calculation in the crate as of 2026-08-23. It is descriptive, not an accuracy
-certificate.
+This is the T1 boundary map with the T2 public-contract addendum for Turquet
+0.2.0. It inventories every exported calculation in the crate as of
+2026-08-23. It is descriptive, not an accuracy certificate.
 
 The status words have narrow meanings:
 
@@ -20,15 +20,23 @@ Algorithms*, second edition. Many source files do not record a chapter,
 coefficient revision, validity interval, or expected error. Those omissions
 remain omissions here rather than being filled with guesses.
 
+All inherited symbols in the tables below are shorthand for paths under
+`turquet::compat`. Their source modules are private in 0.2.0. The Turquet-era
+`foundation`, `orientation`, and `apparent` modules form the primary API.
+
 ## Turquet-era surface
 
 | Public symbol | Source and contract | Range and evidence | Status |
 | --- | --- | --- | --- |
+| `foundation::{JulianDate, Angle, Longitude, EastLongitude, Latitude, Length, Distance, Observer}` | Finite unit-safe values. `JulianDate<Scale>` carries TT or UT1 in the type and preserves two input parts. Celestial longitude wraps to 0-2pi; geographic longitude stays signed and east-positive. | Constructor, range, normalization, and unit tests in `tests/foundation.rs`. | measured |
+| `foundation::{Direction, UnitVector, Rotation}` and frame markers | Reference frame is a type parameter; a `Rotation<From, To>` only accepts a `UnitVector<From>`. | Runtime SOFA vector plus compile-fail frame-mismatch doctest. | measured |
+| `foundation::{Model, Accuracy, Modelled, State}` | A calculation carries its algorithm revision, evidence kind, bounded angular residual, epoch, typed frame, direction, and distance. | Metadata assertions in `tests/apparent.rs` and `tests/orientation.rs`. | measured |
+| `orientation::nutation` | `JulianDate<TerrestrialTime>` to IAU 2000A nutation adjusted for IAU 2006 precession; radians on the mean equinox/ecliptic of date. | SOFARS 0.6.1; matches the SOFA 2023 `nut06a` vector to 1e-13 rad. | measured |
+| `orientation::gcrs_to_true_equator` | TT epoch to `Rotation<Gcrs, TrueEquatorEquinoxOfDate>`, including frame bias, IAU 2006 precession, and IAU 2000A nutation. | Matches all nine elements of the SOFA 2023 `pnm06a` vector to 1e-12. | measured |
 | `apparent::ApparentBody::name`, `apparent::APPARENT_BODIES` | Body identifiers; no numerical contract. | Exhaustive for the ten supported bodies. | measured |
-| `apparent::jde_tt_frm_epoch` | `hifitime` epoch to Julian ephemeris day on TT. | Delegates time-scale conversion to `hifitime` 4.3. | measured |
-| `apparent::jde_tt_frm_utc` | Gregorian UTC fields to JDE TT; validates the civil fields and leap-second era. | 1972 onward. Boundary and leap-second tests in `tests/apparent.rs`. | measured |
-| `apparent::geocent_apparent_ecl_pos` | JDE TT to apparent geocentric ecliptic longitude and latitude of true date in radians, plus distance in kilometres or AU as documented by body. | Sun, Moon, and planets measured against DE440s from 1885 through 2099; Pluto rejects dates outside its series. See `receipts/2026-08-13_t3_cohort_de440s.md`. | measured |
-| `apparent::is_retrograde` | JDE TT; central difference of apparent geocentric ecliptic longitude over one TT day. | Same body range, narrowed by half a day at both edges. Direction only; station instants are not yet measured. | unverified |
+| `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. | measured |
+| `apparent::is_retrograde` | Typed TT epoch; central difference of typed apparent longitude over one TT day. | Same body range, narrowed by half a day at both edges. Direction only; station instants are not yet measured. | unverified |
+| `compat::apparent::{jde_tt_frm_epoch, jde_tt_frm_utc, geocent_apparent_ecl_pos, is_retrograde}` | Anonymous-scalar compatibility wrappers for the 0.1 API. | Covered against the typed path; deprecated contract shape. | measured |
 | `verify::JplVerifier::open`, `verify::JplVerifier::geocent_apparent_ecl_pos` | Opt-in ANISE/DE440s reader with SOFA-derived IAU 1976/1980 frame transforms; returns apparent geocentric ecliptic-of-date radians. | Kernel-defined; maintainer supplied. Not shipped in the default feature graph. | tooling |
 
 ## Angles and coordinate transforms
@@ -122,6 +130,21 @@ remain omissions here rather than being filled with guesses.
 
 ## Public constants and types
 
+The typed foundation's public constructors, conversions, and accessors are:
+`JulianDate::{from_parts, from_julian_day, from_epoch, parts, day,
+offset_days}`; `Angle::{from_radians, from_degrees, from_arcseconds, radians,
+degrees, arcseconds, abs}`; `Longitude`, `EastLongitude`, and `Latitude`
+constructors and angle/radian/degree accessors; `Length::{from_meters, meters,
+kilometers}`; `Distance::{from_meters, from_kilometers,
+from_astronomical_units, meters, kilometers, astronomical_units}`;
+`Observer::{new, longitude, latitude, height}`; `Direction::{new, longitude,
+latitude, to_unit_vector}`; `UnitVector::{new, components, to_direction}`;
+`Rotation::{matrix, apply, inverse}`; `Model::{new, name, revision}`;
+`Accuracy::{new, max_angular_error, evidence, authority, scope}`;
+`Modelled::{new, value, into_value, model, accuracy}`; and `State::{new,
+epoch, direction, distance}`. These are contract-preserving value operations,
+not additional astronomical models.
+
 `angle::TWO_PI`; `consts::{GAUSS_GRAV, SPEED_OF_LIGHT,
 EARTH_MOON_MASS_RATIO, SUN_EARTH_MASS_RATIO}`; all exported WGS72 and WGS84
 constants; and the public enums/records in `coords`, `time`, `orbit`, `lunar`,
@@ -131,12 +154,15 @@ constants; and the public enums/records in `coords`, `time`, `orbit`, `lunar`,
 units stated in local rustdoc. Where a type is only a bundle of anonymous
 `f64` values, it does not add frame, time-scale, model, or range safety.
 
-## T1 conclusion
+## T1 and T2 conclusion
 
 The three known upstream numerical defects are repaired by the accompanying
 T1 change. The inventory is complete enough to expose the real boundary:
 `apparent` is the measured production path; the inherited modules remain a
 documented compatibility surface and are not promoted to verified
 calculations by their example tests. T1's disclosure gate is met when this
-map, the repairs, and their tests land. Migrating the anonymous legacy values
-behind typed epochs, frames, and quantities remains T2.
+map, the repairs, and their tests land. T2 moves that anonymous catalogue
+behind `compat`. Primary calculations now carry time scale, frame, units,
+model revision, and evidence in their types or returned state. Invalid TT/UT1
+or GCRS/of-date combinations cannot enter the orientation and apparent APIs as
+interchangeable floating-point values.

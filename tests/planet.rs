@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 #[macro_use]
 extern crate turquet;
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn heliocent_coords() {

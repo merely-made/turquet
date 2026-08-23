@@ -44,6 +44,15 @@ migration belongs to T2.
 Done when invalid frame and time-scale combinations cannot enter the primary
 API as interchangeable floating-point values.
 
+**Completed 2026-08-23.** `foundation` supplies two-part
+`JulianDate<Scale>`, unit-safe angles, distances, and observers,
+frame-parameterized directions and rotations, modelled states, and explicit
+accuracy evidence. `orientation` wraps the pure-Rust SOFARS IAU 2006/2000A
+model and matches the published SOFA validation vectors. `apparent` is the
+forcing consumer and returns typed true-ecliptic-of-date states; its
+epoch-scoped `ApparentSky` reuses orientation work across a chart. The
+anonymous inherited catalogue is reachable through `compat`.
+
 ## The verification lane
 
 Turquet ships two position providers and only one of them is a dependency.
@@ -59,7 +68,8 @@ authority rather than against itself: it routes through ANISE and SOFA and
 never touches Turquet's own series. It is maintainer tooling. The kernel is
 supplied by the maintainer, its output is committed as vectors, and ordinary
 builds and CI compare against those vectors without acquiring a kernel. The
-default dependency tree is `hifitime` alone.
+default dependency tree contains `hifitime` for scale-aware epochs and
+`sofars` for the production IAU orientation model; both are pure Rust.
 
 ```text
 cargo run --features verify --bin verify_cohort -- <kernel.bsp> [step_days]

@@ -377,10 +377,10 @@ computing the obliquity of the ecliptic.
 #[macro_export]
 macro_rules! apprnt_sidr {
     ($JD: expr) => {{
-        let (nut_in_long, nut_in_oblq) = $crate::nutation::nutation($JD);
-        let eclip_oblq = $crate::ecliptic::mn_oblq_laskar($JD);
-        $crate::time::apprnt_sidr (
-            $crate::time::mn_sidr($JD), nut_in_long, eclip_oblq + nut_in_oblq
+        let (nut_in_long, nut_in_oblq) = $crate::compat::nutation::nutation($JD);
+        let eclip_oblq = $crate::compat::ecliptic::mn_oblq_laskar($JD);
+        $crate::compat::time::apprnt_sidr (
+            $crate::compat::time::mn_sidr($JD), nut_in_long, eclip_oblq + nut_in_oblq
         )
     }};
 }

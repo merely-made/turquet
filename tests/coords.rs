@@ -23,7 +23,7 @@ THE SOFTWARE.
 extern crate turquet;
 
 use std::f64::consts::PI;
-use turquet::coords;
+use turquet::compat::coords;
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     assert!(

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #![allow(non_snake_case)]
 
 extern crate turquet;
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn rho_sin_cos_phi() {

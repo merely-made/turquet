@@ -14,9 +14,9 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). The inherited algorithms
-are useful, but the public API and verification surface are still those of the
-original 2015-era library. Treat `0.1.x` as an audit and modernization series.
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.2.0` introduces
+Turquet's typed primary API; the original 2015-era surface remains under
+`turquet::compat` for migration.
 
 The inherited implementation currently includes:
 
@@ -36,11 +36,17 @@ coordinate and lunar defects are repaired with SOFA, NASA, and independent
 Meeus vectors. The inherited suite remains compatibility evidence rather than
 a general accuracy claim; see [AUDIT.md](AUDIT.md) for the exact boundary.
 
+T2 adds two-part Julian Dates parameterized by time scale, unit-safe angles,
+distances, and observers, frame-parameterized directions and rotations,
+modelled states with accuracy evidence, and IAU 2006 precession with IAU 2000A
+nutation. Published SOFA vectors check the orientation path. Frame and time
+scale mismatches in this API are type errors.
+
 The first Turquet-era module is `apparent` (2026-08-13): apparent geocentric
 ecliptic-of-date positions for the Sun, Moon, and eight planets through
-Pluto, composed entirely from inherited code with explicit light-time,
-aberration, nutation, and Pluto frame-precession stages, plus a leap-second
-UTC-to-TT conversion and explicit range errors. Measured against NASA/JPL
+Pluto, composed from inherited analytical series with explicit light-time,
+aberration, IAU 2006/2000A nutation, and Pluto frame-precession stages, plus
+explicit range errors. Measured against NASA/JPL
 Horizons at J2000, the 2024 total solar eclipse, and 2026-08-13, every body
 lands within 2 millidegrees, most exactly (`tests/apparent.rs`). That is a
 T3 down payment measured at chart precision, not yet the broad-cohort T3
@@ -73,24 +79,27 @@ See [ROADMAP.md](ROADMAP.md) for the adoption gates,
 
 ## Current use
 
-The legacy API remains available while typed replacements are built:
+The primary path makes the TT input and true-ecliptic-of-date output part of
+the types. `ApparentSky` reuses the full nutation calculation for every body at
+one epoch:
 
 ```rust
-use turquet::{lunar, sun};
+use turquet::apparent::{ApparentBody, ApparentSky};
+use turquet::foundation::{JulianDate, ScaleAwareEpoch, TerrestrialTime};
 
-let jde = 2_451_545.0;
-let (sun_position, sun_distance_au) = sun::geocent_ecl_pos(jde);
-let (moon_position, moon_distance_km) = lunar::geocent_ecl_pos(jde);
+let utc = ScaleAwareEpoch::from_gregorian_utc(2026, 8, 23, 12, 0, 0, 0);
+let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
+let sky = ApparentSky::at(tt);
+let moon = sky.position(ApparentBody::Moon)?;
 
-println!("Sun longitude: {} rad", sun_position.long);
-println!("Sun distance: {sun_distance_au} AU");
-println!("Moon longitude: {} rad", moon_position.long);
-println!("Moon distance: {moon_distance_km} km");
+println!("Moon longitude: {} deg", moon.value().direction().longitude().degrees());
+println!("Moon distance: {} km", moon.value().distance().kilometers());
+# Ok::<(), turquet::apparent::ApparentError>(())
 ```
 
-The anonymous `f64` epoch and coordinate values above are legacy interfaces.
-Typed epochs, frames, angles, distances, states, and uncertainty are adoption
-work rather than compatibility aliases.
+The inherited anonymous-scalar API remains available as
+`turquet::compat::{lunar, sun, coords, ...}`. It is a migration surface rather
+than a second primary contract.
 
 ## Verification
 
@@ -107,5 +116,9 @@ engine remains Rust-only and usable without a runtime kernel download.
 
 ## License
 
-Turquet is distributed under the [MIT License](LICENSE.md). The original
-copyright and complete Git history are retained.
+Turquet's own source is distributed under the [MIT License](LICENSE.md). The
+original copyright and complete Git history are retained. The pure-Rust
+`sofars` dependency is MIT-licensed and contains routines derived from IAU
+SOFA under the additional SOFA terms reproduced in its package. Products that
+use those routines should follow those acknowledgement and redistribution
+terms; see [PROVENANCE.md](PROVENANCE.md).

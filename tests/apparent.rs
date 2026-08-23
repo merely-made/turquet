@@ -10,13 +10,14 @@
 extern crate turquet;
 
 use turquet::apparent::{
-    geocent_apparent_ecl_pos, is_retrograde, jde_tt_frm_epoch, jde_tt_frm_utc, ApparentBody,
-    ApparentError, Epoch, APPARENT_BODIES,
+    is_retrograde, position, ApparentBody, ApparentError, ApparentSky, ANALYTICAL_APPARENT,
+    APPARENT_BODIES,
 };
+use turquet::compat::apparent as legacy_apparent;
+use turquet::foundation::{AccuracyEvidence, JulianDate, ScaleAwareEpoch, TerrestrialTime};
 
-/// Worst allowed residual. Measured: the Sun, Moon, and eight planets land on
-/// the Horizons millidegree exactly or within 2; Pluto's truncated series is
-/// the limiting term at 14.
+/// Worst allowed residual. Measured: all ten bodies land on the Horizons
+/// millidegree exactly or within 2 across these three charts.
 const MAX_ERROR_MILLIDEGREES: i64 = 20;
 
 struct Golden {
@@ -82,13 +83,13 @@ fn horizons_observer_longitudes_and_latitudes() {
     let mut worst_label = String::new();
     for golden in CHARTS.iter() {
         let (year, month, day, hour, minute, second) = golden.utc;
-        let jde_tt =
-            jde_tt_frm_utc(year, month, day, hour, minute, second).expect("epoch after 1972");
+        let epoch = tt_from_utc(year, month, day, hour, minute, second);
+        let sky = ApparentSky::at(epoch);
         for body in APPARENT_BODIES.iter() {
-            let (longitude, latitude) =
-                geocent_apparent_ecl_pos(body, jde_tt).expect("epoch inside series range");
-            let got_longitude = (longitude.to_degrees() * 1_000.0).round() as i64;
-            let got_latitude = (latitude.to_degrees() * 1_000.0).round() as i64;
+            let modelled = sky.position(*body).expect("epoch inside series range");
+            let state = modelled.value();
+            let got_longitude = (state.direction().longitude().degrees() * 1_000.0).round() as i64;
+            let got_latitude = (state.direction().latitude().degrees() * 1_000.0).round() as i64;
             let &(name, expected_longitude, expected_latitude) = golden
                 .positions
                 .iter()
@@ -127,54 +128,98 @@ fn horizons_observer_longitudes_and_latitudes() {
 
 #[test]
 fn known_retrograde_states_at_the_2024_eclipse() {
-    let jde_tt = jde_tt_frm_utc(2024, 4, 8, 18, 0, 0.0).expect("epoch after 1972");
+    let epoch = tt_from_utc(2024, 4, 8, 18, 0, 0.0);
     // Mercury was retrograde during the 2024 eclipse; Mars and the Sun were
     // direct, and the Moon never retrogrades.
     assert_eq!(
-        is_retrograde(&ApparentBody::Mercury, jde_tt),
+        is_retrograde(ApparentBody::Mercury, epoch),
         Ok(true),
         "Mercury was retrograde on 2024-04-08"
     );
-    assert_eq!(is_retrograde(&ApparentBody::Mars, jde_tt), Ok(false));
-    assert_eq!(is_retrograde(&ApparentBody::Sun, jde_tt), Ok(false));
-    assert_eq!(is_retrograde(&ApparentBody::Moon, jde_tt), Ok(false));
+    assert_eq!(is_retrograde(ApparentBody::Mars, epoch), Ok(false));
+    assert_eq!(is_retrograde(ApparentBody::Sun, epoch), Ok(false));
+    assert_eq!(is_retrograde(ApparentBody::Moon, epoch), Ok(false));
 }
 
 #[test]
 fn range_violations_are_errors_rather_than_degradation() {
     // 1971 precedes the leap-second era.
     assert_eq!(
-        jde_tt_frm_utc(1971, 12, 31, 0, 0, 0.0),
+        legacy_apparent::jde_tt_frm_utc(1971, 12, 31, 0, 0, 0.0),
         Err(ApparentError::BeforeLeapSecondEra)
     );
     // The Pluto series is stated for 1885 to 2099; the year 2150 is outside.
-    let far_future = 2_451_545.0 + 150.0 * 365.25;
-    match geocent_apparent_ecl_pos(&ApparentBody::Pluto, far_future) {
+    let far_future = JulianDate::<TerrestrialTime>::from_julian_day(2_451_545.0 + 150.0 * 365.25)
+        .expect("finite TT epoch");
+    match position(ApparentBody::Pluto, far_future) {
         Err(ApparentError::OutsideSeriesRange { body, .. }) => assert_eq!(body, "pluto"),
         other => panic!("expected an out-of-range error, got {:?}", other),
     }
     // The same epoch is fine for a VSOP87D body.
-    assert!(geocent_apparent_ecl_pos(&ApparentBody::Jupiter, far_future).is_ok());
+    assert!(position(ApparentBody::Jupiter, far_future).is_ok());
 }
 
 #[test]
 fn the_typed_epoch_and_civil_field_paths_agree() {
-    let civil = jde_tt_frm_utc(2026, 8, 13, 12, 0, 0.0).expect("epoch after 1972");
-    let typed = jde_tt_frm_epoch(
-        Epoch::maybe_from_gregorian_utc(2026, 8, 13, 12, 0, 0, 0).expect("valid UTC epoch"),
-    );
+    let civil = legacy_apparent::jde_tt_frm_utc(2026, 8, 13, 12, 0, 0.0).expect("epoch after 1972");
+    let typed = JulianDate::<TerrestrialTime>::from_epoch(
+        ScaleAwareEpoch::maybe_from_gregorian_utc(2026, 8, 13, 12, 0, 0, 0)
+            .expect("valid UTC epoch"),
+    )
+    .day();
     assert_eq!(civil, typed);
     // A TT epoch converts without the UTC leap-second offset.
-    let tt = jde_tt_frm_epoch(Epoch::from_gregorian_tai(2026, 8, 13, 12, 0, 0, 0));
+    let tt = JulianDate::<TerrestrialTime>::from_epoch(ScaleAwareEpoch::from_gregorian_tai(
+        2026, 8, 13, 12, 0, 0, 0,
+    ))
+    .day();
     assert!((typed - tt).abs() > 1e-6, "UTC and TAI epochs must differ");
 }
 
 #[test]
 fn j2000_noon_utc_is_the_standard_epoch_in_terrestrial_time() {
-    let jde = jde_tt_frm_utc(2000, 1, 1, 12, 0, 0.0).expect("epoch after 1972");
+    let jde = tt_from_utc(2000, 1, 1, 12, 0, 0.0).day();
     // TT ran 64.184 s ahead of UTC in 2000.
     let expected = 2_451_545.0 + 64.184 / 86_400.0;
     assert!((jde - expected).abs() < 1e-9, "got {}", jde);
+}
+
+#[test]
+fn primary_states_disclose_units_model_and_accuracy() {
+    let state = position(ApparentBody::Moon, tt_from_utc(2026, 8, 13, 12, 0, 0.0))
+        .expect("supported epoch");
+    assert_eq!(state.model(), ANALYTICAL_APPARENT);
+    assert_eq!(
+        state.accuracy().evidence(),
+        AccuracyEvidence::ExternalComparison
+    );
+    assert_eq!(state.accuracy().max_angular_error().degrees(), 0.010);
+    let lunar_distance = state.value().distance().kilometers();
+    assert!(lunar_distance > 350_000.0 && lunar_distance < 410_000.0);
+}
+
+fn tt_from_utc(
+    year: i32,
+    month: u32,
+    day: u32,
+    hour: u32,
+    minute: u32,
+    second: f64,
+) -> JulianDate<TerrestrialTime> {
+    let whole_seconds = second.trunc() as u8;
+    let nanoseconds = ((second.fract()) * 1e9).round() as u32;
+    JulianDate::from_epoch(
+        ScaleAwareEpoch::maybe_from_gregorian_utc(
+            year,
+            month as u8,
+            day as u8,
+            hour as u8,
+            minute as u8,
+            whole_seconds,
+            nanoseconds,
+        )
+        .expect("valid UTC epoch"),
+    )
 }
 
 fn circular_error(actual: i64, expected: i64) -> i64 {

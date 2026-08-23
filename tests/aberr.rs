@@ -23,7 +23,7 @@ THE SOFTWARE.
 #![allow(non_snake_case)]
 
 extern crate turquet;
-use turquet::*;
+use turquet::compat::*;
 
 #[test]
 fn stell_aberr_in_eq_coords() {

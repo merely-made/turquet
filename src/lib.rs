@@ -24,37 +24,42 @@ THE SOFTWARE.
 #![allow(non_camel_case_types)]
 
 extern crate hifitime;
+extern crate sofars;
 
 #[cfg(feature = "verify")]
 extern crate anise;
-#[cfg(feature = "verify")]
-extern crate sofars;
 
 #[macro_use]
-pub mod util;
+mod util;
 
 #[macro_use]
-pub mod coords;
-pub mod aberr;
-pub mod angle;
+mod coords;
+mod aberr;
+mod angle;
 pub mod apparent;
-pub mod asteroid;
-pub mod atmos;
-pub mod binary_star;
-pub mod consts;
-pub mod ecliptic;
-pub mod interpol;
-pub mod lunar;
-pub mod misc;
-pub mod nutation;
-pub mod orbit;
-pub mod parallax;
-pub mod planet;
-pub mod pluto;
-pub mod precess;
-pub mod star;
-pub mod sun;
-pub mod time;
-pub mod transit;
+mod asteroid;
+mod atmos;
+mod binary_star;
+mod consts;
+mod ecliptic;
+pub mod foundation;
+mod interpol;
+mod lunar;
+mod misc;
+mod nutation;
+mod orbit;
+pub mod orientation;
+mod parallax;
+mod planet;
+mod pluto;
+mod precess;
+mod star;
+mod sun;
+mod time;
+mod transit;
+
+/// The inherited astro-rust catalogue. Its anonymous scalar contracts are
+/// retained for migration and are not Turquet's primary API.
+pub mod compat;
 #[cfg(feature = "verify")]
 pub mod verify;
