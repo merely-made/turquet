@@ -10,8 +10,8 @@
 extern crate turquet;
 
 use turquet::apparent::{
-    is_retrograde, position, ApparentBody, ApparentError, ApparentSky, ANALYTICAL_APPARENT,
-    APPARENT_BODIES,
+    is_retrograde, position, ApparentBody, ApparentError, ApparentSky, ApparentStage,
+    ANALYTICAL_APPARENT, APPARENT_BODIES, APPARENT_STAGES,
 };
 use turquet::compat::apparent as legacy_apparent;
 use turquet::foundation::{AccuracyEvidence, JulianDate, ScaleAwareEpoch, TerrestrialTime};
@@ -198,6 +198,73 @@ fn primary_states_disclose_units_model_and_accuracy() {
     assert!(lunar_distance > 350_000.0 && lunar_distance < 410_000.0);
 }
 
+#[test]
+fn analytical_stage_order_is_explicit() {
+    assert_eq!(
+        APPARENT_STAGES,
+        [
+            ApparentStage::Precession,
+            ApparentStage::LightTime,
+            ApparentStage::SolarDeflection,
+            ApparentStage::AnnualAberration,
+            ApparentStage::Nutation,
+        ]
+    );
+}
+
+#[test]
+fn mercury_station_is_bracketed_against_horizons() {
+    let retrograde_epoch = tt_from_utc(2024, 4, 25, 0, 0, 0.0);
+    let direct_epoch = tt_from_utc(2024, 4, 26, 0, 0, 0.0);
+    assert_eq!(
+        is_retrograde(ApparentBody::Mercury, retrograde_epoch),
+        Ok(true)
+    );
+    assert_eq!(
+        is_retrograde(ApparentBody::Mercury, direct_epoch),
+        Ok(false)
+    );
+
+    let retrograde = position(ApparentBody::Mercury, retrograde_epoch)
+        .expect("Mercury station epoch is supported")
+        .into_value()
+        .direction();
+    let direct = position(ApparentBody::Mercury, direct_epoch)
+        .expect("Mercury station epoch is supported")
+        .into_value()
+        .direction();
+    assert_degrees_close(retrograde.longitude().degrees(), 15.9932191, 0.010);
+    assert_degrees_close(retrograde.latitude().degrees(), -1.1967370, 0.010);
+    assert_degrees_close(direct.longitude().degrees(), 15.9900610, 0.010);
+    assert_degrees_close(direct.latitude().degrees(), -1.4210524, 0.010);
+}
+
+#[test]
+fn lunar_perigee_and_apogee_samples_match_horizons() {
+    let samples = [
+        (2024, 4, 7, 18, 0, 4.1365027, -1.0573360, 0.00239870764692),
+        (2024, 4, 20, 2, 0, 167.6320605, 2.4842272, 0.00271160426587),
+    ];
+    for &(year, month, day, hour, minute, longitude, latitude, distance) in samples.iter() {
+        let state = position(
+            ApparentBody::Moon,
+            tt_from_utc(year, month, day, hour, minute, 0.0),
+        )
+        .expect("lunar extreme epoch is supported")
+        .into_value();
+        assert_degrees_close(state.direction().longitude().degrees(), longitude, 0.010);
+        assert_degrees_close(state.direction().latitude().degrees(), latitude, 0.010);
+        assert!(
+            (state.distance().astronomical_units() - distance).abs() < 0.000_002,
+            "lunar range residual at {:04}-{:02}-{:02} was {:.9} AU",
+            year,
+            month,
+            day,
+            state.distance().astronomical_units() - distance
+        );
+    }
+}
+
 fn tt_from_utc(
     year: i32,
     month: u32,
@@ -224,4 +291,15 @@ fn tt_from_utc(
 
 fn circular_error(actual: i64, expected: i64) -> i64 {
     (actual - expected + 180_000).rem_euclid(360_000) - 180_000
+}
+
+fn assert_degrees_close(actual: f64, expected: f64, tolerance_degrees: f64) {
+    let residual = (actual - expected + 180.0).rem_euclid(360.0) - 180.0;
+    assert!(
+        residual.abs() <= tolerance_degrees,
+        "expected {:.9} deg, got {:.9} deg, residual {:.6} deg",
+        expected,
+        actual,
+        residual
+    );
 }

@@ -1,7 +1,7 @@
 # Public calculation audit
 
-This is the T1 boundary map with the T2 public-contract addendum for Turquet
-0.2.0. It inventories every exported calculation in the crate as of
+This is the T1 boundary map with T2 and T3 public-contract addenda for Turquet
+0.3.0. It inventories every exported calculation in the crate as of
 2026-08-23. It is descriptive, not an accuracy certificate.
 
 The status words have narrow meanings:
@@ -21,21 +21,25 @@ coefficient revision, validity interval, or expected error. Those omissions
 remain omissions here rather than being filled with guesses.
 
 All inherited symbols in the tables below are shorthand for paths under
-`turquet::compat`. Their source modules are private in 0.2.0. The Turquet-era
-`foundation`, `orientation`, and `apparent` modules form the primary API.
+`turquet::compat`. Their source modules are private in 0.3.0. The Turquet-era
+`foundation`, `orientation`, `apparent`, and `observer` modules form the
+primary API.
 
 ## Turquet-era surface
 
 | Public symbol | Source and contract | Range and evidence | Status |
 | --- | --- | --- | --- |
-| `foundation::{JulianDate, Angle, Longitude, EastLongitude, Latitude, Length, Distance, Observer}` | Finite unit-safe values. `JulianDate<Scale>` carries TT or UT1 in the type and preserves two input parts. Celestial longitude wraps to 0-2pi; geographic longitude stays signed and east-positive. | Constructor, range, normalization, and unit tests in `tests/foundation.rs`. | measured |
+| `foundation::{JulianDate, TimeOffset, Angle, Longitude, EastLongitude, Latitude, Length, Distance, Observer}` | Finite unit-safe values. `JulianDate<Scale>` carries TT or UT1 in the type and preserves two input parts; observed DUT1 constructs UT1 through a seconds-typed `TimeOffset`. Celestial longitude wraps to 0-2pi; geographic longitude stays signed and east-positive. | Constructor, range, normalization, and unit tests in `tests/foundation.rs`. | measured |
 | `foundation::{Direction, UnitVector, Rotation}` and frame markers | Reference frame is a type parameter; a `Rotation<From, To>` only accepts a `UnitVector<From>`. | Runtime SOFA vector plus compile-fail frame-mismatch doctest. | measured |
 | `foundation::{Model, Accuracy, Modelled, State}` | A calculation carries its algorithm revision, evidence kind, bounded angular residual, epoch, typed frame, direction, and distance. | Metadata assertions in `tests/apparent.rs` and `tests/orientation.rs`. | measured |
 | `orientation::nutation` | `JulianDate<TerrestrialTime>` to IAU 2000A nutation adjusted for IAU 2006 precession; radians on the mean equinox/ecliptic of date. | SOFARS 0.6.1; matches the SOFA 2023 `nut06a` vector to 1e-13 rad. | measured |
 | `orientation::gcrs_to_true_equator` | TT epoch to `Rotation<Gcrs, TrueEquatorEquinoxOfDate>`, including frame bias, IAU 2006 precession, and IAU 2000A nutation. | Matches all nine elements of the SOFA 2023 `pnm06a` vector to 1e-12. | measured |
+| `orientation::{true_obliquity, true_ecliptic_to_true_equator}` | Typed TT to IAU 2006/2000A true obliquity or a frame-safe true-ecliptic-to-true-equatorial rotation. | Composed from the measured SOFARS `obl06` and `nut06a` model; exercised through all 90 observer vectors. | measured |
 | `apparent::ApparentBody::name`, `apparent::APPARENT_BODIES` | Body identifiers; no numerical contract. | Exhaustive for the ten supported bodies. | measured |
-| `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. | measured |
-| `apparent::is_retrograde` | Typed TT epoch; central difference of typed apparent longitude over one TT day. | Same body range, narrowed by half a day at both edges. Direction only; station instants are not yet measured. | unverified |
+| `apparent::{ApparentStage, APPARENT_STAGES}` | Ordered disclosure of source-frame precession, light-time, solar deflection, annual aberration, and nutation. A stage may be the identity where the source series is already in the required frame or is the deflector. | Each stage is present in the composed analytical path; the full path supplies the numerical evidence. | measured |
+| `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. Targeted eclipse and lunar distance-extreme vectors also pass. | measured |
+| `apparent::is_retrograde` | Typed TT epoch; central difference of typed apparent longitude over one TT day. | Same body range, narrowed by half a day at both edges. A 2024 Mercury station is bracketed against Horizons positions. This classifies direction; solving the event instant belongs to T4. | measured |
+| `observer::{EarthOrientation, ObserverSky, Observation, position}` | Typed TT ephemeris plus typed UT1 Earth rotation, caller-supplied polar motion and runtime snapshot identity, and WGS84 observer to topocentric true-equatorial state plus airless north-zero horizon direction. Observer origin is encoded in distinct frame markers. | 90 DE441/Horizons vectors: all ten bodies, three epochs, Boston/Sydney/Tromso, measured worst 0.001522 degrees and 0.000108 AU. Compile-fail proof rejects TT where UT1 is required. | measured |
 | `compat::apparent::{jde_tt_frm_epoch, jde_tt_frm_utc, geocent_apparent_ecl_pos, is_retrograde}` | Anonymous-scalar compatibility wrappers for the 0.1 API. | Covered against the typed path; deprecated contract shape. | measured |
 | `verify::JplVerifier::open`, `verify::JplVerifier::geocent_apparent_ecl_pos` | Opt-in ANISE/DE440s reader with SOFA-derived IAU 1976/1980 frame transforms; returns apparent geocentric ecliptic-of-date radians. | Kernel-defined; maintainer supplied. Not shipped in the default feature graph. | tooling |
 
@@ -131,8 +135,9 @@ All inherited symbols in the tables below are shorthand for paths under
 ## Public constants and types
 
 The typed foundation's public constructors, conversions, and accessors are:
-`JulianDate::{from_parts, from_julian_day, from_epoch, parts, day,
-offset_days}`; `Angle::{from_radians, from_degrees, from_arcseconds, radians,
+`JulianDate::{from_parts, from_julian_day, from_epoch, from_utc_epoch, parts,
+day, offset_days}`; `TimeOffset::{from_seconds, seconds, days}`;
+`Angle::{from_radians, from_degrees, from_arcseconds, radians,
 degrees, arcseconds, abs}`; `Longitude`, `EastLongitude`, and `Latitude`
 constructors and angle/radian/degree accessors; `Length::{from_meters, meters,
 kilometers}`; `Distance::{from_meters, from_kilometers,
@@ -154,7 +159,7 @@ constants; and the public enums/records in `coords`, `time`, `orbit`, `lunar`,
 units stated in local rustdoc. Where a type is only a bundle of anonymous
 `f64` values, it does not add frame, time-scale, model, or range safety.
 
-## T1 and T2 conclusion
+## T1 through T3 conclusion
 
 The three known upstream numerical defects are repaired by the accompanying
 T1 change. The inventory is complete enough to expose the real boundary:
@@ -166,3 +171,9 @@ behind `compat`. Primary calculations now carry time scale, frame, units,
 model revision, and evidence in their types or returned state. Invalid TT/UT1
 or GCRS/of-date combinations cannot enter the orientation and apparent APIs as
 interchangeable floating-point values.
+
+T3 completes the analytical position gate: the ten-body geocentric path has
+explicit corrections and broad date evidence, while the observer path binds
+Earth rotation and site geometry to separately typed inputs and retains the
+external Earth-orientation snapshot. Event searches, atmospheric policy, and
+interpretation remain outside this position-provider boundary.

@@ -14,9 +14,9 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.2.0` introduces
-Turquet's typed primary API; the original 2015-era surface remains under
-`turquet::compat` for migration.
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.3.0` provides
+Turquet's typed geocentric and observer-relative analytical ephemeris; the
+original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
 
@@ -42,15 +42,20 @@ modelled states with accuracy evidence, and IAU 2006 precession with IAU 2000A
 nutation. Published SOFA vectors check the orientation path. Frame and time
 scale mismatches in this API are type errors.
 
-The first Turquet-era module is `apparent` (2026-08-13): apparent geocentric
+The `apparent` module provides apparent geocentric
 ecliptic-of-date positions for the Sun, Moon, and eight planets through
 Pluto, composed from inherited analytical series with explicit light-time,
-aberration, IAU 2006/2000A nutation, and Pluto frame-precession stages, plus
-explicit range errors. Measured against NASA/JPL
-Horizons at J2000, the 2024 total solar eclipse, and 2026-08-13, every body
-lands within 2 millidegrees, most exactly (`tests/apparent.rs`). That is a
-T3 down payment measured at chart precision, not yet the broad-cohort T3
-gate.
+solar deflection, aberration, IAU 2006 precession, and IAU 2000A nutation,
+plus explicit range errors. The `observer` module adds WGS84 parallax,
+separate typed TT and UT1 epochs, caller-supplied polar motion and snapshot
+identity, topocentric true-equatorial output, and airless north-zero horizon
+coordinates.
+
+T3 is measured against 112,137 DE440s geocentric samples across 1885-2099 and
+90 DE441/Horizons observer samples across Boston, Sydney, and Tromso. The
+committed observer cohort's worst angular residual is 0.001522 degrees. Tests
+also cover an eclipse, a Mercury station bracket, lunar perigee and apogee,
+and a high-latitude site.
 
 ## Direction
 
@@ -101,6 +106,13 @@ The inherited anonymous-scalar API remains available as
 `turquet::compat::{lunar, sun, coords, ...}`. It is a migration surface rather
 than a second primary contract.
 
+Observer calculations use `ObserverSky` in the same epoch-scoped pattern.
+The caller supplies an `EarthOrientation` snapshot because UT1 and polar
+motion are observed facts rather than timeless constants. Outputs retain that
+snapshot and expose topocentric right ascension/declination, azimuth/altitude,
+and observer range. Atmospheric refraction remains an application-selected
+policy rather than an implicit correction.
+
 ## Verification
 
 Turquet will use independent authorities according to the calculation:
@@ -108,8 +120,8 @@ Turquet will use independent authorities according to the calculation:
 - official IAU SOFA vectors for time and reference-frame transformations;
 - JPL Development Ephemerides and Horizons for solar-system comparisons;
 - published examples only as local regression fixtures, not sole proof;
-- property and boundary tests for coordinate wraps, stations, eclipses, and
-  high-latitude observers.
+- property and boundary tests for coordinate wraps, stations, eclipses, lunar
+  distance extremes, and high-latitude observers.
 
 JPL kernels and external implementations are verification inputs. The default
 engine remains Rust-only and usable without a runtime kernel download.

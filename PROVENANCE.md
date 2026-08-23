@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.2.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.3.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -48,3 +48,13 @@ requested there when applicable.
 
 Typed UTC-to-TT conversion delegates to `hifitime` 4.3. Its source is licensed
 MPL-2.0 and remains a separate dependency; Turquet's wrapper source is MIT.
+
+## Observer verification
+
+The committed observer vectors in `tests/vectors/observer_horizons.tsv` were
+generated from the NASA/JPL Horizons API on 2026-08-23 using DE441, airless
+observer quantities 2, 4, 20, and 49, and EOP snapshot
+`eop.260821.p261117`. Horizons applies polar motion from that EOP snapshot;
+the checked Turquet fixture explicitly sets polar motion to zero and records
+that approximation. The regeneration script is
+`scripts/fetch_horizons_observer_vectors.ps1`.

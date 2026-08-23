@@ -93,6 +93,19 @@ zero analytical or reference failures and every skip accounted as Pluto
 beyond its declared range. The observer cohort, targeted stations, lunar
 extremes, and eclipse instants remain open.
 
+**Completed 2026-08-23.** `apparent` now discloses and applies light-time,
+solar deflection, annual aberration, IAU 2006 precession, and IAU 2000A
+nutation. `observer` composes the typed geocentric state with WGS84 site
+geometry, separately typed TT and UT1, caller-supplied polar motion, and a
+runtime-owned Earth-orientation snapshot. It returns observer-centered true
+equatorial and airless north-zero horizon states. A committed 90-vector
+DE441/Horizons cohort covers all ten bodies at three epochs from Boston,
+Sydney, and Tromso; measured worst angular residual is 0.001522 degrees and
+worst range residual is 0.000108 AU. The targeted suite includes the 2024
+eclipse, a Mercury station bracket, lunar perigee/apogee samples, and the
+high-latitude Tromso site. See
+`receipts/2026-08-23_t3_analytical_ephemeris.md`.
+
 ## T4: Celestial events
 
 - Complete the useful missing Meeus algorithms.

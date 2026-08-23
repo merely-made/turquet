@@ -100,6 +100,36 @@ impl JulianDate<TerrestrialTime> {
     }
 }
 
+impl JulianDate<UniversalTime1> {
+    /// Construct UT1 from a UTC epoch and an observed `UT1 - UTC` offset.
+    pub fn from_utc_epoch(epoch: ScaleAwareEpoch, ut1_minus_utc: TimeOffset) -> Self {
+        Self::from_parts(
+            J2000_JD,
+            epoch.to_jde_utc_days() - J2000_JD + ut1_minus_utc.days(),
+        )
+        .expect("a finite UTC epoch and offset produce a finite UT1 Julian Date")
+    }
+}
+
+/// A finite signed time offset, stored in SI seconds.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+pub struct TimeOffset(f64);
+
+impl TimeOffset {
+    pub fn from_seconds(seconds: f64) -> Result<Self, ValueError> {
+        require_finite("time offset", seconds)?;
+        Ok(Self(seconds))
+    }
+
+    pub fn seconds(self) -> f64 {
+        self.0
+    }
+
+    pub fn days(self) -> f64 {
+        self.0 / 86_400.0
+    }
+}
+
 /// A finite plane angle in radians.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Angle(f64);
@@ -327,6 +357,19 @@ pub enum TrueEquatorEquinoxOfDate {}
 /// True ecliptic and equinox of the observation date.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TrueEclipticEquinoxOfDate {}
+
+/// Observer-centered true equator and equinox of the observation date.
+///
+/// This is intentionally distinct from [`TrueEquatorEquinoxOfDate`]: the
+/// axes have the same orientation, but the origin is the geodetic observer
+/// rather than the Earth's center.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TopocentricTrueEquatorEquinoxOfDate {}
+
+/// Observer-centered local horizon. Longitude is azimuth measured eastward
+/// from north and latitude is airless altitude above the local tangent plane.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum TopocentricHorizon {}
 
 /// A spherical direction in a statically named reference frame.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -569,7 +612,7 @@ impl<T> Modelled<T> {
     }
 }
 
-/// A geocentric celestial state in a statically named frame.
+/// A celestial state whose frame type names both its axes and origin.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct State<Frame> {
     epoch: JulianDate<TerrestrialTime>,

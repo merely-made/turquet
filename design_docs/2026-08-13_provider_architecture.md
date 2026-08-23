@@ -114,3 +114,19 @@ snapshot identity joins the typed metadata at T2.
 This document fixes architecture, not implementation. The provider trait,
 typed core, verifier relocation, and cohort evidence each arrive as their own
 gate with receipts.
+
+## Completion addendum: 2026-08-23
+
+The status tables above record the founding state and are retained as history.
+T2 and T3 are now complete. The primary API carries typed units, TT and UT1,
+reference frames, model identity, accuracy evidence, and runtime-owned
+Earth-orientation snapshot identity. SOFARS supplies the pure-Rust IAU
+2006/2000A orientation implementation.
+
+The analytical provider now includes explicit source-frame precession,
+light-time, solar deflection, annual aberration, and nutation stages. Its
+observer layer adds WGS84 site geometry, polar motion inputs, topocentric
+true-equatorial output, and airless horizon output. The committed observer
+cohort and targeted station, eclipse, lunar-distance, and high-latitude cases
+close the remaining T3 evidence. See
+`receipts/2026-08-23_t3_analytical_ephemeris.md` for the final measurements.

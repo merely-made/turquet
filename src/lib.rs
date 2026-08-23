@@ -47,6 +47,7 @@ mod interpol;
 mod lunar;
 mod misc;
 mod nutation;
+pub mod observer;
 mod orbit;
 pub mod orientation;
 mod parallax;

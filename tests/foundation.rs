@@ -4,8 +4,8 @@
 extern crate turquet;
 
 use turquet::foundation::{
-    Angle, Direction, Distance, EastLongitude, Gcrs, Latitude, Length, Longitude, Observer,
-    UnitVector, ValueError,
+    Angle, Direction, Distance, EastLongitude, Gcrs, JulianDate, Latitude, Length, Longitude,
+    Observer, ScaleAwareEpoch, TimeOffset, UnitVector, UniversalTime1, ValueError,
 };
 
 #[test]
@@ -29,6 +29,19 @@ fn physical_values_reject_invalid_scalar_states() {
         UnitVector::<Gcrs>::new([0.0, 0.0, 0.0]),
         Err(ValueError::ZeroVector)
     );
+    assert_eq!(
+        TimeOffset::from_seconds(f64::INFINITY),
+        Err(ValueError::NotFinite("time offset"))
+    );
+}
+
+#[test]
+fn observed_dut1_constructs_a_distinct_ut1_epoch() {
+    let utc = ScaleAwareEpoch::from_gregorian_utc(2024, 4, 8, 18, 0, 0, 0);
+    let dut1 = TimeOffset::from_seconds(-0.01669).expect("finite DUT1");
+    let ut1 = JulianDate::<UniversalTime1>::from_utc_epoch(utc, dut1);
+    assert!((ut1.day() - (utc.to_jde_utc_days() + dut1.days())).abs() < 1e-9);
+    assert!((ut1.parts().1 - (utc.to_jde_utc_days() - 2_451_545.0 + dut1.days())).abs() < 1e-12);
 }
 
 #[test]

@@ -3,11 +3,11 @@
 
 //! Apparent geocentric ecliptic positions for the ten classical chart bodies.
 //!
-//! This is the first Turquet-era module and the T3 down payment: one pipeline
+//! This is the geocentric half of Turquet's T3 analytical ephemeris: one pipeline
 //! that composes the inherited VSOP87D planetary theory, the partial
-//! ELP-2000/82 lunar solution, the analytical Pluto series, IAU 2006/2000A
-//! nutation, and the inherited ecliptic precession into apparent positions on
-//! the true equinox of date. No runtime data file is involved.
+//! ELP-2000/82 lunar solution, the analytical Pluto series, and IAU 2006/2000A
+//! orientation into apparent positions on the true equinox of date. No runtime
+//! data file is involved.
 //!
 //! Validation authority: NASA/JPL Horizons observer-table quantity 31
 //! (`tests/apparent.rs`), at J2000, the 2024-04-08 total solar eclipse, and
@@ -18,9 +18,9 @@
 //!
 //! Explicit stages, per the roadmap: heliocentric position of date
 //! (ELP-2000/82 is directly geocentric; Pluto is precessed from its J2000
-//! frame with the inherited ecliptic precession), light-time iteration,
-//! annual aberration from a numerically differentiated Earth velocity, and
-//! nutation in longitude. Solar gravitational deflection is not applied.
+//! frame with IAU 2006), light-time iteration, solar gravitational
+//! deflection, annual aberration from a numerically differentiated Earth
+//! velocity, and IAU 2000A nutation.
 //!
 //! Supported range: the Pluto series is stated for 1885 to 2099. Typed TT
 //! inputs can represent earlier epochs directly. The compatibility UTC-field
@@ -42,7 +42,6 @@ use lunar;
 use orientation;
 use planet;
 use pluto;
-use precess;
 
 /// Astronomical units travelled by light in one day.
 const LIGHT_SPEED_AU_PER_DAY: f64 = 173.144_632_674_24;
@@ -58,7 +57,30 @@ const PLUTO_RANGE_YEARS: (f64, f64) = (1885.0, 2099.0);
 const UTC_LEAP_ERA_START: (i32, u32, u32) = (1972, 1, 1);
 
 /// The composed analytical model used by [`position`].
-pub const ANALYTICAL_APPARENT: Model = Model::new("Turquet analytical apparent ecliptic", "2");
+pub const ANALYTICAL_APPARENT: Model = Model::new("Turquet analytical apparent ecliptic", "3");
+
+/// A correction stage in the analytical apparent pipeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ApparentStage {
+    Precession,
+    LightTime,
+    SolarDeflection,
+    AnnualAberration,
+    Nutation,
+}
+
+/// The ordered correction stages disclosed by the analytical model.
+///
+/// A stage can be an identity for a particular source: the VSOP87D and lunar
+/// series are already referred to the equinox of date, and the Sun is not
+/// deflected by its own gravity.
+pub const APPARENT_STAGES: [ApparentStage; 5] = [
+    ApparentStage::Precession,
+    ApparentStage::LightTime,
+    ApparentStage::SolarDeflection,
+    ApparentStage::AnnualAberration,
+    ApparentStage::Nutation,
+];
 
 /// Epoch-scoped apparent calculation context.
 ///
@@ -302,10 +324,11 @@ fn calculate(
     let earth = planet_rect(&planet::Planet::Earth, jde_tt);
 
     // Light-time: the body is seen where it was when the light left it.
+    let mut target = [0.0_f64; 3];
     let mut offset = [0.0_f64; 3];
     let mut light_time_days = 0.0;
     for _ in 0..3 {
-        let target = body.heliocent_rect(jde_tt - light_time_days);
+        target = body.heliocent_rect(jde_tt - light_time_days);
         offset = [
             target[0] - earth[0],
             target[1] - earth[1],
@@ -319,10 +342,15 @@ fn calculate(
     // rather than a memorised orbit constant.
     let velocity = earth_velocity(jde_tt);
     let direction = normalize(&offset);
+    let deflected = if let ApparentBody::Sun = *body {
+        direction
+    } else {
+        solar_deflection(direction, target, earth)
+    };
     let aberrated = normalize(&[
-        direction[0] + velocity[0] / LIGHT_SPEED_AU_PER_DAY,
-        direction[1] + velocity[1] / LIGHT_SPEED_AU_PER_DAY,
-        direction[2] + velocity[2] / LIGHT_SPEED_AU_PER_DAY,
+        deflected[0] + velocity[0] / LIGHT_SPEED_AU_PER_DAY,
+        deflected[1] + velocity[1] / LIGHT_SPEED_AU_PER_DAY,
+        deflected[2] + velocity[2] / LIGHT_SPEED_AU_PER_DAY,
     ]);
 
     // Mean equinox of date to true equinox of date.
@@ -342,11 +370,21 @@ fn moon_apparent(
     nutation_longitude: Angle,
 ) -> (f64, f64, Distance) {
     let (point, distance_km) = lunar::geocent_ecl_pos(epoch.day());
+    let distance =
+        Distance::from_kilometers(distance_km).expect("lunar distance is finite and nonnegative");
+    let geocentric = spherical_to_rect(point.long, point.lat, distance.astronomical_units());
+    let earth = planet_rect(&planet::Planet::Earth, epoch.day());
+    let heliocentric = [
+        earth[0] + geocentric[0],
+        earth[1] + geocentric[1],
+        earth[2] + geocentric[2],
+    ];
+    let deflected = solar_deflection(normalize(&geocentric), heliocentric, earth);
     let nut_in_long = nutation_longitude.radians();
     (
-        angle::limit_to_two_PI(point.long + nut_in_long),
-        point.lat,
-        Distance::from_kilometers(distance_km).expect("lunar distance is finite and nonnegative"),
+        angle::limit_to_two_PI(deflected[1].atan2(deflected[0]) + nut_in_long),
+        deflected[2].asin(),
+        distance,
     )
 }
 
@@ -379,13 +417,33 @@ fn planet_rect(planet: &planet::Planet, jde: f64) -> [f64; 3] {
 }
 
 /// The inherited Pluto series is referred to the standard equinox of J2000.0;
-/// the rest of the pipeline is referred to the equinox of date. The inherited
-/// ecliptic precession carries it across before the frames are mixed.
+/// the rest of the pipeline is referred to the equinox of date. Transforming
+/// through ICRS applies IAU 2006 frame bias and precession before the frames
+/// are mixed.
 fn pluto_rect_of_date(jde: f64) -> [f64; 3] {
     let (longitude_j2000, latitude_j2000, radius) = pluto::heliocent_pos(jde);
+    let (right_ascension, declination) =
+        sofars::coords::eceq06(J2000_JD, 0.0, longitude_j2000, latitude_j2000);
     let (longitude, latitude) =
-        precess::precess_ecl_coords(longitude_j2000, latitude_j2000, J2000_JD, jde);
+        sofars::coords::eqec06(J2000_JD, jde - J2000_JD, right_ascension, declination);
     spherical_to_rect(longitude, latitude, radius)
+}
+
+fn solar_deflection(
+    observer_to_source: [f64; 3],
+    sun_to_source: [f64; 3],
+    sun_to_observer: [f64; 3],
+) -> [f64; 3] {
+    let source_direction = normalize(&sun_to_source);
+    let observer_direction = normalize(&sun_to_observer);
+    normalize(&sofars::astro::ld(
+        1.0,
+        observer_to_source,
+        source_direction,
+        observer_direction,
+        norm(&sun_to_observer),
+        1e-6,
+    ))
 }
 
 fn spherical_to_rect(longitude: f64, latitude: f64, radius: f64) -> [f64; 3] {

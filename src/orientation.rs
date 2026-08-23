@@ -11,7 +11,7 @@
 
 use foundation::{
     Accuracy, AccuracyEvidence, Angle, Gcrs, JulianDate, Model, Modelled, Rotation,
-    TerrestrialTime, TrueEquatorEquinoxOfDate,
+    TerrestrialTime, TrueEclipticEquinoxOfDate, TrueEquatorEquinoxOfDate,
 };
 
 /// The model revision used by this module.
@@ -47,6 +47,33 @@ pub fn nutation(epoch: JulianDate<TerrestrialTime>) -> Modelled<Nutation> {
             longitude: Angle::from_radians(longitude).expect("SOFARS returns a finite angle"),
             obliquity: Angle::from_radians(obliquity).expect("SOFARS returns a finite angle"),
         },
+        IAU_2006_2000A,
+        conformance_accuracy(),
+    )
+}
+
+/// True obliquity of the ecliptic for the TT epoch.
+pub fn true_obliquity(epoch: JulianDate<TerrestrialTime>) -> Modelled<Angle> {
+    let (day1, day2) = epoch.parts();
+    let mean = sofars::pnp::obl06(day1, day2);
+    let (_, nutation_in_obliquity) = sofars::pnp::nut06a(day1, day2);
+    Modelled::new(
+        Angle::from_radians(mean + nutation_in_obliquity)
+            .expect("SOFARS returns a finite obliquity"),
+        IAU_2006_2000A,
+        conformance_accuracy(),
+    )
+}
+
+/// Rotation from the true ecliptic of date into the true equator of date.
+pub fn true_ecliptic_to_true_equator(
+    epoch: JulianDate<TerrestrialTime>,
+) -> Modelled<Rotation<TrueEclipticEquinoxOfDate, TrueEquatorEquinoxOfDate>> {
+    let obliquity = true_obliquity(epoch).into_value().radians();
+    let (sine, cosine) = obliquity.sin_cos();
+    Modelled::new(
+        Rotation::from_matrix([[1.0, 0.0, 0.0], [0.0, cosine, -sine], [0.0, sine, cosine]])
+            .expect("finite obliquity produces a finite rotation"),
         IAU_2006_2000A,
         conformance_accuracy(),
     )
