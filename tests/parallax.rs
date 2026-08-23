@@ -32,7 +32,9 @@ pub fn topocent_eq_coords() {
         dec: -15.771083_f64.to_radians()
     };
     let geograph_point = coords::GeographPoint{
-        long: angle::deg_frm_hms(7, 47, 27.0).to_radians(),
+        // Meeus gives the site as 7h47m27s west; Turquet longitudes are
+        // east-positive.
+        long: -angle::deg_frm_hms(7, 47, 27.0).to_radians(),
         lat: 33.356111_f64.to_radians(),
     };
     let topo_eq_point = parallax::topocent_eq_coords(

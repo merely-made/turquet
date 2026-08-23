@@ -1005,21 +1005,24 @@ of the Moon
 
 # Returns
 
-* `JD`: Julian day corresponding to the exact time of the phase
-        that is closest to `date`
+* `JDE TT`: Julian ephemeris day in Terrestrial Time corresponding to the
+            exact time of the phase that is closest to `date`
 
 *Meeus* says the mean error in `JD` for phases between 1980 AD
 and mid-2020 AD is 3.8 seconds.
 
 # Arguments
 
-* `date` : Date of interest, close to the phase
+* `date` : Civil date used only to select the nearest lunation. Its time of
+           day and time-zone fields do not define the returned time scale.
 * `phase`: The [Phase](./enum.Phase.html)
 **/
 pub fn time_of_phase(date: &time::Date, phase: &Phase) -> f64 {
 
-    let mut K = 12.3685 * (time::decimal_year(&date) - 2000.0);
-    K = (K as i64) as f64;
+    // Meeus chapter 49 selects the integer lunation nearest the requested
+    // date. Casting to i64 truncated toward zero, choosing the following
+    // lunation for part of every year before 2000.
+    let K = (12.3685 * (time::decimal_year(&date) - 2000.0)).round();
 
     let k = match phase {
         &Phase::New   => K,
@@ -1113,7 +1116,7 @@ pub fn time_of_phase(date: &time::Date, phase: &Phase) -> f64 {
         let W =
             0.00306
           - 0.00038 * E * M.cos()
-          + 0.00026 * M1.cos();
+          + 0.00026 * M1.cos()
           - 0.00002 * ((M1 - M).cos() - (M1 + M).cos() - (2.0 * F).cos());
 
         JD += match phase {
@@ -1133,7 +1136,7 @@ pub fn time_of_phase(date: &time::Date, phase: &Phase) -> f64 {
             [-0.0018,          M1 - 2.0*F],
             [-0.0007,          M1 + 2.0*F],
             [-0.0004,          3.0 * M1],
-            [-0.00034,         2.0*M1 - M],
+            [-0.00034 * E,     2.0*M1 - M],
             [ 0.00032 * E,     M + 2.0*F],
             [ 0.00032 * E,     M - 2.0*F],
             [-0.00028 * E * E, M1 + 2.0*M],

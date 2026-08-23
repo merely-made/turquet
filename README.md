@@ -30,9 +30,11 @@ The inherited implementation currently includes:
   ephemerides;
 - selected satellite calculations for Jupiter and Saturn.
 
-Existing tests pass on current stable Rust. That is a compatibility receipt,
-not a general accuracy claim. Known upstream correctness reports and every
-public calculation still require a systematic numerical audit.
+The T1 audit names every exported calculation and distinguishes measured,
+corrected, example-only, and unverified surfaces. Five confirmed inherited
+coordinate and lunar defects are repaired with SOFA, NASA, and independent
+Meeus vectors. The inherited suite remains compatibility evidence rather than
+a general accuracy claim; see [AUDIT.md](AUDIT.md) for the exact boundary.
 
 The first Turquet-era module is `apparent` (2026-08-13): apparent geocentric
 ecliptic-of-date positions for the Sun, Moon, and eight planets through
@@ -65,7 +67,8 @@ Each mature calculation should disclose:
 - supported date range and expected accuracy;
 - the derivation required to explain and reproduce the result.
 
-See [ROADMAP.md](ROADMAP.md) for the adoption gates and
+See [ROADMAP.md](ROADMAP.md) for the adoption gates,
+[AUDIT.md](AUDIT.md) for the public calculation boundary, and
 [PROVENANCE.md](PROVENANCE.md) for the inherited source and references.
 
 ## Current use

@@ -23,6 +23,16 @@ checkout.
 Done when no public function presents an unstated frame or unit as a verified
 calculation.
 
+**Completed 2026-08-23.** `AUDIT.md` inventories every exported calculation
+and marks its source, quantities, frame/time contract, range, and actual
+evidence. Upstream longitude and horizontal-declination defects 18 and 19
+(also reported in 13) are repaired against IAU SOFA validation vectors. The
+discarded lunar quarter term, missing eccentricity factor, and negative-index
+lunation selection are repaired against NASA's phase catalog and an
+independent Meeus implementation. The remaining inherited functions are
+explicitly compatibility surfaces, not verified calculations; their typed
+migration belongs to T2.
+
 ## T2: Typed foundations
 
 - Introduce typed epochs, time scales, angles, distances, observers, frames,

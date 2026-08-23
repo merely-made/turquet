@@ -27,9 +27,9 @@ use angle;
 /// Represents a point on the geographical surface of the Earth
 #[derive(Debug)]
 pub struct GeographPoint {
-    /// Geographical longitude
+    /// Geographical longitude in radians, positive east of Greenwich.
     pub long: f64,
-    /// Geographical latitude
+    /// Geographical latitude in radians, positive north of the equator.
     pub lat: f64,
 }
 
@@ -89,13 +89,14 @@ sidereal time
 # Arguments
 
 * `green_sidreal`: Sidereal time at Greenwhich *| in radians*
-* `observer_long`: Observer's geographical longitude *| in radians*
+* `observer_long`: Observer's geographical longitude, positive east of
+                   Greenwich *| in radians*
 * `asc`: Right ascension *| in radians*
 **/
 #[inline]
 pub fn hr_angl_frm_observer_long(green_sidreal: f64, observer_long: f64, asc: f64) -> f64 {
 
-    green_sidreal - observer_long - asc
+    green_sidreal + observer_long - asc
 
 }
 
@@ -272,7 +273,8 @@ Computes the azimuth from equatorial coordinates
 
 # Returns
 
-* `az`: Azimuth *| in radians*
+* `az`: Azimuth, measured eastward from south and returned in the range
+        `[-pi, pi]` *| in radians*
 
 # Arguments
 
@@ -318,7 +320,7 @@ Computes local horizontal coordinates from equatorial coordinates
 
 `(az, alt)`
 
-* `az`: Azimuth *| in radians*
+* `az`: Azimuth, measured eastward from south *| in radians*
 * `alt`: Altitude *| in radians*
 
 # Arguments
@@ -344,7 +346,7 @@ Computes the hour angle from local horizontal coordinates
 
 # Arguments
 
-* `az`: Azimuth *| in radians*
+* `az`: Azimuth, measured eastward from south *| in radians*
 * `alt`: Altitude *| in radians*
 * `observer_lat`: Observer's geographical latitude *| in radians*
 **/
@@ -366,7 +368,7 @@ Computes the declination from local horizontal coordinates
 
 # Arguments
 
-* `az`: Azimuth *| in radians*
+* `az`: Azimuth, measured eastward from south *| in radians*
 * `alt`: Altitude *| in radians*
 * `observer_lat`: Observer's geographical latitude *| in radians*
 **/
@@ -374,7 +376,7 @@ pub fn dec_frm_hz(az: f64, alt: f64, observer_lat: f64) -> f64 {
 
     (
         observer_lat.sin() * alt.sin()
-      - observer_lat.cos() * az.cos() * az.cos()
+      - observer_lat.cos() * alt.cos() * az.cos()
     ).asin()
 
 }

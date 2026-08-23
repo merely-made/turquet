@@ -43,7 +43,9 @@ fn time() {
     };
 
     let geograph_point = coords::GeographPoint{
-        long: 71.0833_f64.to_radians(),
+        // 71.0833 degrees west in the Meeus example; Turquet longitudes are
+        // east-positive.
+        long: (-71.0833_f64).to_radians(),
         lat: 42.3333_f64.to_radians(),
     };
 

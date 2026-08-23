@@ -125,3 +125,71 @@ fn phases() {
     let JD_new_moon = lunar::time_of_phase(&date_new_moon, &lunar::Phase::New);
     assert_eq!(util::round_upto_digits(JD_new_moon, 5), 2443192.65118);
 }
+
+#[test]
+fn quarter_phase_uses_the_complete_meeus_correction() {
+    // PyMeeus 0.5.12 independently implements Meeus chapter 49 and reports
+    // 2044-01-21 23:48:17 TT for this last quarter. The published example is
+    // rounded to the nearest second.
+    let date = time::Date {
+        year: 2044,
+        month: time::Month::Jan,
+        decimal_day: 1.0,
+        cal_type: time::CalType::Gregorian,
+    };
+    let actual_jde_tt = lunar::time_of_phase(&date, &lunar::Phase::Last);
+    let expected_jde_tt = 2467636.491863426;
+    let error_seconds = (actual_jde_tt - expected_jde_tt).abs() * 86_400.0;
+
+    assert!(
+        error_seconds <= 0.1,
+        "expected the independent Meeus implementation within 0.1 second, error was {:.6} seconds",
+        error_seconds
+    );
+}
+
+#[test]
+fn quarter_phase_matches_nasa_phase_catalog() {
+    // NASA GSFC's phase catalog gives 2000-01-14 13:34 UT for this first
+    // quarter. The catalog is minute-resolution, so its rounding interval and
+    // the analytical model's stated error both fit inside this one-minute gate.
+    let date = time::Date {
+        year: 2000,
+        month: time::Month::Jan,
+        decimal_day: 1.0,
+        cal_type: time::CalType::Gregorian,
+    };
+    let actual_jde_tt = lunar::time_of_phase(&date, &lunar::Phase::First);
+    // The NASA catalog is UT. Convert the minute-resolution label through
+    // Turquet's hifitime-backed UTC-to-TT boundary before comparing JDE TT.
+    let nasa_jde_tt = apparent::jde_tt_frm_utc(2000, 1, 14, 13, 34, 0.0).unwrap();
+    let error_seconds = (actual_jde_tt - nasa_jde_tt).abs() * 86_400.0;
+
+    assert!(
+        error_seconds <= 45.0,
+        "expected the NASA phase within its minute-resolution interval, error was {:.6} seconds",
+        error_seconds
+    );
+}
+
+#[test]
+fn phase_selection_uses_the_nearest_lunation_before_2000() {
+    // NASA GSFC reports the nearest New Moon to 1999-01-20 at
+    // 1999-01-17 15:46 UT. The inherited i64 cast truncated the negative
+    // lunation index toward zero and returned the February event instead.
+    let date = time::Date {
+        year: 1999,
+        month: time::Month::Jan,
+        decimal_day: 20.0,
+        cal_type: time::CalType::Gregorian,
+    };
+    let actual_jde_tt = lunar::time_of_phase(&date, &lunar::Phase::New);
+    let nasa_jde_tt = apparent::jde_tt_frm_utc(1999, 1, 17, 15, 46, 0.0).unwrap();
+    let error_seconds = (actual_jde_tt - nasa_jde_tt).abs() * 86_400.0;
+
+    assert!(
+        error_seconds <= 45.0,
+        "expected the nearest NASA lunation, error was {:.6} seconds",
+        error_seconds
+    );
+}

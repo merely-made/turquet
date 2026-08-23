@@ -158,7 +158,9 @@ fn m (
 
 ) -> f64 {
 
-    let mut m = (asc + L - Theta0)/angle::TWO_PI;
+    // Meeus writes this relation with west-positive longitude. Turquet's
+    // GeographPoint is east-positive, so the longitude term changes sign.
+    let mut m = (asc - L - Theta0)/angle::TWO_PI;
     let p = H0/angle::TWO_PI;
 
     m += match transit_type {

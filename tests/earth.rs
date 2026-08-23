@@ -44,12 +44,12 @@ fn rho_sin_cos_phi() {
 fn geodesic_dist() {
 
     let paris = coords::GeographPoint {
-        long: angle::deg_frm_dms(-2, 20, 14.0).to_radians(),
+        long: angle::deg_frm_dms(2, 20, 14.0).to_radians(),
         lat : angle::deg_frm_dms(48, 50, 11.0).to_radians()
     };
 
     let washington = coords::GeographPoint {
-        long: angle::deg_frm_dms(77,  3, 56.0).to_radians(),
+        long: angle::deg_frm_dms(-77,  3, 56.0).to_radians(),
         lat : angle::deg_frm_dms(38, 55, 17.0).to_radians()
     };
 
