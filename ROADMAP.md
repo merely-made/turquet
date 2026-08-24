@@ -136,8 +136,16 @@ span, and results state the motion before and after the bounded root. The
 analytical engine and an hourly DE441/Horizons fixture. See
 `receipts/2026-08-23_t4b_station_search.md`.
 
-T4 remains open for phases, eclipse geometry, rise/set, visibility, extrema,
-and event execution over a live kernel-backed verifier.
+**Third slice completed 2026-08-23.** `events` now finds all four apparent
+Moon-Sun ecliptic-longitude quarter angles in one search. April 2024 new moon,
+first quarter, full moon, and last quarter are each checked through analytical
+and Horizons providers against NASA GSFC's minute-resolution phase catalogue;
+the measured worst provider difference is 5.273 seconds. See
+`receipts/2026-08-23_t4c_lunar_phases.md`.
+
+T4 remains open for eclipse geometry, rise/set, visibility, illuminated-
+fraction and distance extrema, and event execution over a live kernel-backed
+verifier.
 
 ## T5: Consumers and embedding
 

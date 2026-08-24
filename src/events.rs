@@ -3,9 +3,9 @@
 
 //! Provider-neutral celestial event searches.
 //!
-//! T4 event searches currently cover apparent ecliptic-longitude conjunctions
-//! and stationary points. Every result is a bounded TT interval, not an
-//! isolated floating-point instant.
+//! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
+//! stationary points, and lunar quarter phases. Every result is a bounded TT
+//! interval, not an isolated floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
@@ -20,9 +20,10 @@ const TWO_PI: f64 = 2.0 * PI;
 
 /// Maximum sampling step accepted by the current event searches.
 ///
-/// One TT day keeps even the Moon's relative motion safely below a half-turn,
-/// so an opposition wrap cannot masquerade as a conjunction. Station callers
-/// can select a smaller step when resolving faster changes in longitude speed.
+/// One TT day keeps even the Moon's relative motion safely below a quarter
+/// turn, so an opposition wrap cannot masquerade as a conjunction and one
+/// phase step cannot hide a second quarter angle. Station callers can select a
+/// smaller step when resolving faster changes in longitude speed.
 pub const MAX_EVENT_STEP_DAYS: f64 = 1.0;
 
 /// Backward-compatible name for the shared event sampling ceiling.
@@ -291,6 +292,70 @@ impl EclipticLongitudeStation {
     }
 }
 
+/// One of the four apparent Moon-Sun ecliptic-longitude quarter angles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LunarPhase {
+    NewMoon,
+    FirstQuarter,
+    FullMoon,
+    LastQuarter,
+}
+
+impl LunarPhase {
+    pub fn name(self) -> &'static str {
+        match self {
+            LunarPhase::NewMoon => "new moon",
+            LunarPhase::FirstQuarter => "first quarter",
+            LunarPhase::FullMoon => "full moon",
+            LunarPhase::LastQuarter => "last quarter",
+        }
+    }
+
+    /// Target apparent ecliptic longitude of the Moon east of the Sun.
+    pub fn target_elongation(self) -> Angle {
+        let degrees = match self {
+            LunarPhase::NewMoon => 0.0,
+            LunarPhase::FirstQuarter => 90.0,
+            LunarPhase::FullMoon => 180.0,
+            LunarPhase::LastQuarter => 270.0,
+        };
+        Angle::from_degrees(degrees).expect("quarter angles are finite")
+    }
+}
+
+/// A lunar phase defined by apparent ecliptic longitude.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LunarPhaseEvent {
+    phase: LunarPhase,
+    interval: EventInterval,
+    angular_separation: Angle,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+}
+
+impl LunarPhaseEvent {
+    pub fn phase(&self) -> LunarPhase {
+        self.phase
+    }
+
+    pub fn interval(&self) -> EventInterval {
+        self.interval
+    }
+
+    /// Great-circle Sun-Moon center separation at the interval midpoint.
+    pub fn angular_separation(&self) -> Angle {
+        self.angular_separation
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+}
+
 #[derive(Debug)]
 pub enum EventError<E> {
     SameBody,
@@ -360,7 +425,7 @@ where
         let right_continuous = left_continuous + signed_angle(right_raw - left_raw);
 
         if let Some(target) = crossed_conjunction(left_continuous, right_continuous) {
-            let interval = refine_conjunction(
+            let interval = refine_relative_longitude(
                 provider,
                 first,
                 second,
@@ -386,6 +451,73 @@ where
                     second,
                     interval,
                     angular_separation: angular_separation(first_state, second_state),
+                    provider_model: provider.model(),
+                    provider_snapshot: provider.data_snapshot().map(str::to_owned),
+                });
+            }
+        }
+
+        left_epoch = right_epoch;
+        left_raw = right_raw;
+        left_continuous = right_continuous;
+    }
+
+    Ok(events)
+}
+
+/// Find all four apparent ecliptic-longitude lunar phases in a TT window.
+///
+/// The phase angle is the Moon's apparent ecliptic longitude east of the Sun:
+/// 0 degrees for new moon, then 90, 180, and 270 degrees for first quarter,
+/// full moon, and last quarter. Latitude is not discarded: each event also
+/// reports the great-circle center separation at its interval midpoint.
+pub fn ecliptic_longitude_lunar_phases<P>(
+    provider: &P,
+    window: SearchWindow,
+) -> Result<Vec<LunarPhaseEvent>, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let mut events = Vec::new();
+    let mut left_epoch = window.start;
+    let mut left_raw =
+        relative_longitude(provider, ApparentBody::Moon, ApparentBody::Sun, left_epoch)?;
+    let mut left_continuous = left_raw;
+
+    while left_epoch.day() < window.end.day() {
+        let right_day = (left_epoch.day() + window.step_days).min(window.end.day());
+        let right_epoch = JulianDate::from_julian_day(right_day)
+            .expect("a bounded step between finite epochs remains finite");
+        let right_raw =
+            relative_longitude(provider, ApparentBody::Moon, ApparentBody::Sun, right_epoch)?;
+        let right_continuous = left_continuous + signed_angle(right_raw - left_raw);
+
+        if let Some((target, phase)) = crossed_lunar_phase(left_continuous, right_continuous) {
+            let interval = refine_relative_longitude(
+                provider,
+                ApparentBody::Moon,
+                ApparentBody::Sun,
+                left_epoch,
+                right_epoch,
+                left_continuous,
+                right_continuous,
+                target,
+                window.tolerance_days,
+            )?;
+            let duplicate = events
+                .last()
+                .map(|event: &LunarPhaseEvent| {
+                    event.interval.end().day() >= interval.start().day() && event.phase == phase
+                })
+                .unwrap_or(false);
+            if !duplicate {
+                let midpoint = interval.midpoint();
+                let moon = provider_position(provider, ApparentBody::Moon, midpoint)?;
+                let sun = provider_position(provider, ApparentBody::Sun, midpoint)?;
+                events.push(LunarPhaseEvent {
+                    phase,
+                    interval,
+                    angular_separation: angular_separation(moon, sun),
                     provider_model: provider.model(),
                     provider_snapshot: provider.data_snapshot().map(str::to_owned),
                 });
@@ -577,7 +709,7 @@ fn motion(speed: f64) -> LongitudeMotion {
     }
 }
 
-fn refine_conjunction<P>(
+fn refine_relative_longitude<P>(
     provider: &P,
     first: ApparentBody,
     second: ApparentBody,
@@ -661,6 +793,24 @@ fn crossed_conjunction(left: f64, right: f64) -> Option<f64> {
     } else {
         None
     }
+}
+
+fn crossed_lunar_phase(left: f64, right: f64) -> Option<(f64, LunarPhase)> {
+    let quarter_turn = PI / 2.0;
+    let lower = left.min(right);
+    let upper = left.max(right);
+    let quarter_index = (lower / quarter_turn).ceil() as i64;
+    let target = quarter_index as f64 * quarter_turn;
+    if target > upper {
+        return None;
+    }
+    let phase = match quarter_index.rem_euclid(4) {
+        0 => LunarPhase::NewMoon,
+        1 => LunarPhase::FirstQuarter,
+        2 => LunarPhase::FullMoon,
+        _ => LunarPhase::LastQuarter,
+    };
+    Some((target, phase))
 }
 
 fn signed_angle(angle: f64) -> f64 {

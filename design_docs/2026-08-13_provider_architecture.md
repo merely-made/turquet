@@ -149,3 +149,11 @@ engine. The velocity-difference span is explicit and retained in the result,
 along with the direction on each side of the root. A committed hourly
 Horizons provider and the analytical provider locate the 2024-04-25 Mercury
 direct station with a 0.659-second difference.
+
+## T4c addendum: 2026-08-23
+
+Lunar phase events are now the four quarter-angle roots of provider-supplied
+apparent Moon-minus-Sun ecliptic longitude. The result retains the phase,
+bounded TT interval, great-circle center separation, and provider identity.
+This keeps illumination and eclipse policy out of the phase name while making
+the shared geometry executable through analytical and Horizons providers.
