@@ -14,11 +14,12 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.8.1` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.9.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
-lunar eclipse circumstances.
+lunar eclipse circumstances, plus observer-relative airless altitude
+crossings.
 The original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
@@ -61,18 +62,19 @@ also cover an eclipse, a Mercury station bracket, lunar perigee and apogee,
 and a high-latitude site.
 
 The T4 event API uses `GeocentricPositionProvider` for apparent
-ecliptic-longitude conjunctions, stationary points, lunar quarter phases, and
-eclipses. Search step, time tolerance, station velocity-difference span, and
-lunar circumstance span are explicit. Results are TT intervals carrying
-provider model and runtime snapshot identity. Position failures remain
-errors. Eclipse results retain a named spherical geometry revision and the
-terms that decide their class. Solar candidates mean a global alignment is
-possible after observer parallax; local type and visibility are not inferred.
-Lunar searches refine greatest eclipse and the P1/P4, U1/U4, and U2/U3
-contacts appropriate to penumbral, partial, and total events. These contacts
-use Turquet's atmosphere-free spherical shadow. Every algorithm is exercised
-with the analytical engine, committed NASA/JPL Horizons facts, and a live
-caller-supplied JPL SPK kernel through the opt-in verifier.
+ecliptic-longitude conjunctions, stationary points, lunar quarter phases,
+eclipses, and observer-relative altitude crossings. Altitude searches compose
+that provider with an epoch-indexed `EarthOrientationProvider` and the same
+WGS84 airless transform used by `ObserverSky`. Search controls are explicit,
+and results are bounded TT intervals carrying position, transform, and
+Earth-orientation identities. Eclipse results retain a named spherical
+geometry revision and the terms that decide their class. Solar candidates
+mean a global alignment is possible after observer parallax; local type and
+visibility are not inferred. Lunar searches refine greatest eclipse and the
+P1/P4, U1/U4, and U2/U3 contacts appropriate to penumbral, partial, and total
+events. Every landed algorithm is exercised with the analytical engine and
+committed NASA/JPL Horizons facts; geocentric families also run through a live
+caller-supplied JPL SPK kernel in the opt-in verifier.
 
 ## Direction
 
@@ -125,16 +127,19 @@ than a second primary contract.
 
 Observer calculations use `ObserverSky` in the same epoch-scoped pattern.
 The caller supplies an `EarthOrientation` snapshot because UT1 and polar
-motion are observed facts rather than timeless constants. Outputs retain that
-snapshot and expose topocentric right ascension/declination, azimuth/altitude,
-and observer range. Atmospheric refraction remains an application-selected
-policy rather than an implicit correction.
+motion are observed facts rather than timeless constants. Provider-neutral
+searches use `EarthOrientationProvider` to obtain those facts at every TT
+sample. Outputs retain the data identity and expose topocentric right
+ascension/declination, azimuth/altitude, and observer range. Atmospheric
+refraction remains an application-selected policy rather than an implicit
+correction.
 
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. T4 still
-has open slices for observer-relative solar contacts and eclipse visibility,
-rise/set, general visibility, and extrema.
+has open slices for named rise/set policies, transit, grazing and persistent
+altitude classification, observer-relative solar contacts and eclipse
+visibility, general visibility, and extrema.
 
 ## Verification
 

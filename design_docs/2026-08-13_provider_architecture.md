@@ -204,3 +204,20 @@ greatest eclipse, and 22.455 seconds for contacts. This closes live verifier
 execution for the event families already present. It does not supply the
 epoch-indexed Earth orientation and provider-neutral topocentric transform
 required by observer-relative contacts or altitude crossings.
+
+## T4f addendum: 2026-08-24
+
+Observer-relative event solving now adds a second, orthogonal provider seam:
+`EarthOrientationProvider` supplies typed UT1, polar motion, authority, and a
+data snapshot for every requested TT epoch. It does not select or wrap a
+position provider. `airless_altitude_crossings` composes both sources directly
+with `ObserverTransform`, the provider-neutral WGS84 projection extracted
+from `ObserverSky`.
+
+This keeps ephemeris and Earth-orientation failures distinct and prevents a
+search from freezing one absolute UT1 value across its window. Results retain
+both data identities and the airless transform revision. A one-hour sampling
+ceiling bounds the first contract, while an empty result remains only an
+absence of sampled sign changes. Named rise/set policy, transit, grazing and
+persistent-state classification, refraction, horizon dip, terrain, and limb
+selection remain later layers.

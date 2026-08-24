@@ -4,18 +4,20 @@
 //! Provider-neutral celestial event searches.
 //!
 //! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
-//! stationary points, lunar quarter phases, and eclipse candidates. Every
-//! result is a bounded TT interval, not an isolated floating-point instant.
+//! stationary points, lunar quarter phases, eclipse candidates, lunar eclipse
+//! circumstances, and airless observer-altitude crossings. Every result is a
+//! bounded TT interval, not an isolated floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
 
 use apparent::ApparentBody;
 use foundation::{
-    Angle, Distance, JulianDate, Longitude, Model, State, TerrestrialTime,
+    Angle, Distance, JulianDate, Longitude, Model, Observer, State, TerrestrialTime,
     TrueEclipticEquinoxOfDate,
 };
-use provider::GeocentricPositionProvider;
+use observer::{ObserverTransform, ObserverTransformError, AIRLESS_TOPOCENTRIC_TRANSFORM};
+use provider::{EarthOrientationProvider, GeocentricPositionProvider};
 
 const TWO_PI: f64 = 2.0 * PI;
 
@@ -26,6 +28,12 @@ const TWO_PI: f64 = 2.0 * PI;
 /// phase step cannot hide a second quarter angle. Station callers can select a
 /// smaller step when resolving faster changes in longitude speed.
 pub const MAX_EVENT_STEP_DAYS: f64 = 1.0;
+
+/// Maximum sampling step accepted by an altitude-crossing search.
+///
+/// The one-hour ceiling limits how much diurnal motion can occur between
+/// samples. It does not prove the absence of tangent or multiple roots.
+pub const MAX_ALTITUDE_CROSSING_STEP_DAYS: f64 = 1.0 / 24.0;
 
 /// Backward-compatible name for the shared event sampling ceiling.
 pub const MAX_CONJUNCTION_STEP_DAYS: f64 = MAX_EVENT_STEP_DAYS;
@@ -134,6 +142,57 @@ impl fmt::Display for SearchWindowError {
 }
 
 impl ::std::error::Error for SearchWindowError {}
+
+/// Validated numerical controls for an airless altitude-crossing search.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AltitudeCrossingSearch {
+    window: SearchWindow,
+    threshold: Angle,
+}
+
+impl AltitudeCrossingSearch {
+    pub fn new(
+        window: SearchWindow,
+        threshold: Angle,
+    ) -> Result<Self, AltitudeCrossingSearchError> {
+        if window.step_days() > MAX_ALTITUDE_CROSSING_STEP_DAYS {
+            return Err(AltitudeCrossingSearchError::StepTooLarge);
+        }
+        if threshold.radians() < -PI / 2.0 || threshold.radians() > PI / 2.0 {
+            return Err(AltitudeCrossingSearchError::ThresholdOutOfRange);
+        }
+        Ok(Self { window, threshold })
+    }
+
+    pub fn window(self) -> SearchWindow {
+        self.window
+    }
+
+    pub fn threshold(self) -> Angle {
+        self.threshold
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AltitudeCrossingSearchError {
+    StepTooLarge,
+    ThresholdOutOfRange,
+}
+
+impl fmt::Display for AltitudeCrossingSearchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            AltitudeCrossingSearchError::StepTooLarge => {
+                formatter.write_str("altitude-crossing search step exceeds one TT hour")
+            }
+            AltitudeCrossingSearchError::ThresholdOutOfRange => {
+                formatter.write_str("altitude threshold must be between minus and plus 90 degrees")
+            }
+        }
+    }
+}
+
+impl ::std::error::Error for AltitudeCrossingSearchError {}
 
 /// Numerical controls specific to a stationary-point search.
 ///
@@ -289,6 +348,74 @@ impl EventInterval {
     pub fn midpoint(self) -> JulianDate<TerrestrialTime> {
         JulianDate::from_julian_day((self.start.day() + self.end.day()) / 2.0)
             .expect("an interval between finite epochs has a finite midpoint")
+    }
+}
+
+/// Direction through a requested airless altitude.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AltitudeCrossingKind {
+    Ascending,
+    Descending,
+}
+
+/// One sampled, sign-changing crossing of an airless topocentric altitude.
+///
+/// The interval is bounded in TT. An empty search result means only that no
+/// sampled sign crossing was found; it is not an always-above, always-below,
+/// circumpolar, or grazing classification.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AirlessAltitudeCrossing {
+    body: ApparentBody,
+    kind: AltitudeCrossingKind,
+    interval: EventInterval,
+    observer: Observer,
+    threshold: Angle,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+    transform_model: Model,
+    earth_orientation_authority: String,
+    earth_orientation_snapshot: String,
+}
+
+impl AirlessAltitudeCrossing {
+    pub fn body(&self) -> ApparentBody {
+        self.body
+    }
+
+    pub fn kind(&self) -> AltitudeCrossingKind {
+        self.kind
+    }
+
+    pub fn interval(&self) -> EventInterval {
+        self.interval
+    }
+
+    pub fn observer(&self) -> Observer {
+        self.observer
+    }
+
+    pub fn threshold(&self) -> Angle {
+        self.threshold
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+
+    pub fn transform_model(&self) -> Model {
+        self.transform_model
+    }
+
+    pub fn earth_orientation_authority(&self) -> &str {
+        &self.earth_orientation_authority
+    }
+
+    pub fn earth_orientation_snapshot(&self) -> &str {
+        &self.earth_orientation_snapshot
     }
 }
 
@@ -750,6 +877,398 @@ impl<E: ::std::error::Error + 'static> ::std::error::Error for EventError<E> {
             | EventError::CircumstanceSpanTooShort { .. } => None,
         }
     }
+}
+
+/// A failure while composing position, Earth-orientation, and observer facts.
+#[derive(Debug)]
+pub enum AltitudeCrossingError<P, E> {
+    Position {
+        body: ApparentBody,
+        epoch: JulianDate<TerrestrialTime>,
+        source: P,
+    },
+    EarthOrientation {
+        epoch: JulianDate<TerrestrialTime>,
+        source: E,
+    },
+    EarthOrientationIdentityMismatch {
+        epoch: JulianDate<TerrestrialTime>,
+        expected_authority: String,
+        expected_snapshot: String,
+        actual_authority: String,
+        actual_snapshot: String,
+    },
+    Transform {
+        body: ApparentBody,
+        epoch: JulianDate<TerrestrialTime>,
+        source: ObserverTransformError,
+    },
+}
+
+impl<P: fmt::Display, E: fmt::Display> fmt::Display for AltitudeCrossingError<P, E> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            AltitudeCrossingError::Position {
+                body,
+                epoch,
+                ref source,
+            } => write!(
+                formatter,
+                "could not position {} at TT JD {}: {}",
+                body.name(),
+                epoch.day(),
+                source
+            ),
+            AltitudeCrossingError::EarthOrientation { epoch, ref source } => write!(
+                formatter,
+                "could not obtain Earth orientation at TT JD {}: {}",
+                epoch.day(),
+                source
+            ),
+            AltitudeCrossingError::EarthOrientationIdentityMismatch {
+                epoch,
+                ref expected_authority,
+                ref expected_snapshot,
+                ref actual_authority,
+                ref actual_snapshot,
+            } => write!(
+                formatter,
+                "Earth-orientation identity changed at TT JD {} from {}/{} to {}/{}",
+                epoch.day(),
+                expected_authority,
+                expected_snapshot,
+                actual_authority,
+                actual_snapshot
+            ),
+            AltitudeCrossingError::Transform {
+                body,
+                epoch,
+                ref source,
+            } => write!(
+                formatter,
+                "could not transform {} for an observer at TT JD {}: {}",
+                body.name(),
+                epoch.day(),
+                source
+            ),
+        }
+    }
+}
+
+impl<P, E> ::std::error::Error for AltitudeCrossingError<P, E>
+where
+    P: ::std::error::Error + 'static,
+    E: ::std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            AltitudeCrossingError::Position { ref source, .. } => Some(source),
+            AltitudeCrossingError::EarthOrientation { ref source, .. } => Some(source),
+            AltitudeCrossingError::Transform { ref source, .. } => Some(source),
+            AltitudeCrossingError::EarthOrientationIdentityMismatch { .. } => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct AltitudeSample {
+    epoch: JulianDate<TerrestrialTime>,
+    signed_altitude: f64,
+}
+
+/// Find sampled crossings of a selected airless topocentric altitude.
+///
+/// The position and Earth-orientation sources are queried at every TT sample.
+/// Strict sign changes are refined by bisection to the configured tolerance.
+/// An isolated exact-zero sample is retained only when its neighboring signs
+/// show a crossing; an interior same-sign touch is treated as grazing and is
+/// omitted. Search-window boundary zeros use their available one-sided sign.
+pub fn airless_altitude_crossings<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    search: AltitudeCrossingSearch,
+) -> Result<Vec<AirlessAltitudeCrossing>, AltitudeCrossingError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let window = search.window();
+    let threshold = search.threshold();
+    let orientation_authority = earth_orientation.authority().to_owned();
+    let orientation_snapshot = earth_orientation.data_snapshot().to_owned();
+    let mut samples = Vec::new();
+    let mut epoch = window.start();
+
+    loop {
+        samples.push(AltitudeSample {
+            epoch,
+            signed_altitude: observer_signed_altitude(
+                positions,
+                earth_orientation,
+                observer,
+                body,
+                epoch,
+                threshold,
+                &orientation_authority,
+                &orientation_snapshot,
+            )?,
+        });
+        if epoch.day() >= window.end().day() {
+            break;
+        }
+        let next_day = (epoch.day() + window.step_days()).min(window.end().day());
+        epoch = JulianDate::from_julian_day(next_day)
+            .expect("a bounded step between finite epochs remains finite");
+    }
+
+    let mut events = Vec::new();
+    let mut index = 0;
+    while index < samples.len() {
+        let left = samples[index];
+        if left.signed_altitude == 0.0 {
+            let zero_start = index;
+            let mut zero_end = index;
+            while zero_end + 1 < samples.len() && samples[zero_end + 1].signed_altitude == 0.0 {
+                zero_end += 1;
+            }
+            let before = if zero_start > 0 {
+                Some(samples[zero_start - 1].signed_altitude)
+            } else {
+                None
+            };
+            let after = if zero_end + 1 < samples.len() {
+                Some(samples[zero_end + 1].signed_altitude)
+            } else {
+                None
+            };
+            let kind = if zero_start != zero_end {
+                None
+            } else {
+                exact_crossing_kind(before, after)
+            };
+            if let Some(kind) = kind {
+                push_altitude_crossing(
+                    &mut events,
+                    body,
+                    kind,
+                    EventInterval {
+                        start: left.epoch,
+                        end: left.epoch,
+                    },
+                    observer,
+                    threshold,
+                    positions,
+                    &orientation_authority,
+                    &orientation_snapshot,
+                );
+            }
+            index = zero_end + 1;
+            continue;
+        }
+
+        if index + 1 < samples.len() {
+            let right = samples[index + 1];
+            if right.signed_altitude != 0.0
+                && left.signed_altitude.signum() != right.signed_altitude.signum()
+            {
+                let kind = if right.signed_altitude > 0.0 {
+                    AltitudeCrossingKind::Ascending
+                } else {
+                    AltitudeCrossingKind::Descending
+                };
+                let interval = refine_altitude_crossing(
+                    positions,
+                    earth_orientation,
+                    observer,
+                    body,
+                    threshold,
+                    left,
+                    right,
+                    window.tolerance_days(),
+                    &orientation_authority,
+                    &orientation_snapshot,
+                )?;
+                push_altitude_crossing(
+                    &mut events,
+                    body,
+                    kind,
+                    interval,
+                    observer,
+                    threshold,
+                    positions,
+                    &orientation_authority,
+                    &orientation_snapshot,
+                );
+            }
+        }
+        index += 1;
+    }
+
+    Ok(events)
+}
+
+fn observer_signed_altitude<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    threshold: Angle,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<f64, AltitudeCrossingError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let state =
+        positions
+            .position(body, epoch)
+            .map_err(|source| AltitudeCrossingError::Position {
+                body,
+                epoch,
+                source,
+            })?;
+    let orientation = earth_orientation
+        .at(epoch)
+        .map_err(|source| AltitudeCrossingError::EarthOrientation { epoch, source })?;
+    let actual_authority = earth_orientation.authority();
+    let actual_snapshot = earth_orientation.data_snapshot();
+    if actual_authority != expected_authority
+        || actual_snapshot != expected_snapshot
+        || orientation.authority() != expected_authority
+        || orientation.snapshot() != expected_snapshot
+    {
+        return Err(AltitudeCrossingError::EarthOrientationIdentityMismatch {
+            epoch,
+            expected_authority: expected_authority.to_owned(),
+            expected_snapshot: expected_snapshot.to_owned(),
+            actual_authority: if actual_authority != expected_authority {
+                actual_authority.to_owned()
+            } else {
+                orientation.authority().to_owned()
+            },
+            actual_snapshot: if actual_snapshot != expected_snapshot {
+                actual_snapshot.to_owned()
+            } else {
+                orientation.snapshot().to_owned()
+            },
+        });
+    }
+    let observation = ObserverTransform::at(epoch, orientation, observer)
+        .observe(state)
+        .map_err(|source| AltitudeCrossingError::Transform {
+            body,
+            epoch,
+            source,
+        })?;
+    Ok(observation.value().horizon().latitude().radians() - threshold.radians())
+}
+
+fn refine_altitude_crossing<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    threshold: Angle,
+    mut left: AltitudeSample,
+    mut right: AltitudeSample,
+    tolerance_days: f64,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<EventInterval, AltitudeCrossingError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    while right.epoch.day() - left.epoch.day() > tolerance_days {
+        let epoch = JulianDate::from_julian_day((left.epoch.day() + right.epoch.day()) / 2.0)
+            .expect("a finite altitude bracket has a finite midpoint");
+        let middle = AltitudeSample {
+            epoch,
+            signed_altitude: observer_signed_altitude(
+                positions,
+                earth_orientation,
+                observer,
+                body,
+                epoch,
+                threshold,
+                expected_authority,
+                expected_snapshot,
+            )?,
+        };
+        if middle.signed_altitude == 0.0 {
+            return Ok(EventInterval {
+                start: epoch,
+                end: epoch,
+            });
+        }
+        if left.signed_altitude.signum() == middle.signed_altitude.signum() {
+            left = middle;
+        } else {
+            right = middle;
+        }
+    }
+    Ok(EventInterval {
+        start: left.epoch,
+        end: right.epoch,
+    })
+}
+
+fn exact_crossing_kind(before: Option<f64>, after: Option<f64>) -> Option<AltitudeCrossingKind> {
+    match (before, after) {
+        (Some(left), Some(right)) if left.signum() != right.signum() => {
+            if right > 0.0 {
+                Some(AltitudeCrossingKind::Ascending)
+            } else {
+                Some(AltitudeCrossingKind::Descending)
+            }
+        }
+        (None, Some(right)) => {
+            if right > 0.0 {
+                Some(AltitudeCrossingKind::Ascending)
+            } else {
+                Some(AltitudeCrossingKind::Descending)
+            }
+        }
+        (Some(left), None) => {
+            if left < 0.0 {
+                Some(AltitudeCrossingKind::Ascending)
+            } else {
+                Some(AltitudeCrossingKind::Descending)
+            }
+        }
+        _ => None,
+    }
+}
+
+fn push_altitude_crossing<P>(
+    events: &mut Vec<AirlessAltitudeCrossing>,
+    body: ApparentBody,
+    kind: AltitudeCrossingKind,
+    interval: EventInterval,
+    observer: Observer,
+    threshold: Angle,
+    positions: &P,
+    orientation_authority: &str,
+    orientation_snapshot: &str,
+) where
+    P: GeocentricPositionProvider,
+{
+    events.push(AirlessAltitudeCrossing {
+        body,
+        kind,
+        interval,
+        observer,
+        threshold,
+        provider_model: positions.model(),
+        provider_snapshot: positions.data_snapshot().map(str::to_owned),
+        transform_model: AIRLESS_TOPOCENTRIC_TRANSFORM,
+        earth_orientation_authority: orientation_authority.to_owned(),
+        earth_orientation_snapshot: orientation_snapshot.to_owned(),
+    });
 }
 
 /// Find every apparent ecliptic-longitude conjunction in a TT search window.
@@ -1647,4 +2166,36 @@ fn eclipse_distance<E>(
 fn angular_radius(radius_km: f64, distance_km: f64) -> Angle {
     Angle::from_radians((radius_km / distance_km).asin())
         .expect("validated radii and distances produce a finite angular radius")
+}
+
+#[cfg(test)]
+mod altitude_crossing_tests {
+    use super::{exact_crossing_kind, AltitudeCrossingKind};
+
+    #[test]
+    fn exact_sample_requires_crossing_signs_in_the_interior() {
+        assert_eq!(
+            exact_crossing_kind(Some(-1.0), Some(1.0)),
+            Some(AltitudeCrossingKind::Ascending)
+        );
+        assert_eq!(
+            exact_crossing_kind(Some(1.0), Some(-1.0)),
+            Some(AltitudeCrossingKind::Descending)
+        );
+        assert_eq!(exact_crossing_kind(Some(1.0), Some(1.0)), None);
+        assert_eq!(exact_crossing_kind(Some(-1.0), Some(-1.0)), None);
+    }
+
+    #[test]
+    fn search_boundary_zero_uses_the_available_one_sided_sign() {
+        assert_eq!(
+            exact_crossing_kind(None, Some(1.0)),
+            Some(AltitudeCrossingKind::Ascending)
+        );
+        assert_eq!(
+            exact_crossing_kind(Some(1.0), None),
+            Some(AltitudeCrossingKind::Descending)
+        );
+        assert_eq!(exact_crossing_kind(None, None), None);
+    }
 }

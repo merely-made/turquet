@@ -170,8 +170,24 @@ wide and both providers agreed on event classes and contact order. The kernel
 stays outside the repository and ordinary CI. See
 `receipts/2026-08-24_t4_live_kernel_events.md`.
 
+**Sixth slice completed 2026-08-24.** `events` now composes any
+`GeocentricPositionProvider` with an epoch-indexed
+`EarthOrientationProvider`, the WGS84 observer, and the provider-neutral
+airless transform. It returns ascending or descending crossings of a
+caller-selected physical altitude as bounded TT intervals. Results retain
+the observer, threshold, ephemeris identity, transform revision, and
+Earth-orientation authority and snapshot. The one-hour sampling ceiling and
+empty-result meaning are explicit: this contract finds sampled sign changes
+and does not classify grazing or persistent above/below states. Both the
+analytical and committed DE441/Horizons position providers agree with direct
+Horizons airless altitude roots for Boston Sun and Sydney Moon pairs within
+0.232 seconds; a Tromso midsummer Sun case is the empty control. See
+`receipts/2026-08-24_t4f_airless_altitude_crossings.md`.
+
 T4 remains open for observer-relative solar contacts and eclipse visibility,
-rise/set, general visibility, and illuminated-fraction and distance extrema.
+named rise/set and transit policy, grazing and persistent altitude
+classification, general visibility, and illuminated-fraction and distance
+extrema.
 
 ## T5: Consumers and embedding
 

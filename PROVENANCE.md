@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.8.1 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.9.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -60,6 +60,19 @@ that approximation. The regeneration script is
 `scripts/fetch_horizons_observer_vectors.ps1`.
 
 ## Event verification
+
+`tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
+geocentric positions, DUT1, and direct topocentric airless elevations from
+NASA/JPL Horizons API 1.2 and DE441. It covers ordinary Boston Sun and Sydney
+Moon crossing pairs plus a Tromso midsummer Sun empty control. Horizons
+quantity 4 defines topocentric azimuth and elevation, and
+`APPARENT=AIRLESS` omits atmospheric refraction. Horizons applies polar
+motion from EOP snapshot `eop.260824.p261120`; the Turquet test records its
+zero-polar-motion approximation while interpolating DUT1 at every TT request.
+Regenerate the 867 rows with
+`scripts/fetch_horizons_altitude_crossing_vectors.ps1`. The official quantity
+definitions are in the Horizons manual:
+<https://ssd.jpl.nasa.gov/horizons/manual.html>.
 
 `tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
 Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23

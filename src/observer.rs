@@ -8,6 +8,8 @@
 //! drives Earth rotation. Polar motion is caller-supplied observational data.
 //! The default calculation is airless and uses the WGS84 reference ellipsoid.
 
+use std::fmt;
+
 use apparent::{ApparentBody, ApparentError, ApparentSky};
 use foundation::{
     Accuracy, AccuracyEvidence, Angle, Direction, Distance, JulianDate, Latitude, Longitude, Model,
@@ -19,6 +21,10 @@ use orientation;
 /// The composed observer-relative model used by [`position`].
 pub const ANALYTICAL_TOPOCENTRIC: Model =
     Model::new("Turquet analytical topocentric apparent", "1");
+
+/// Provider-neutral WGS84 topocentric and airless horizon transform.
+pub const AIRLESS_TOPOCENTRIC_TRANSFORM: Model =
+    Model::new("Turquet WGS84 airless topocentric transform", "1");
 
 /// Observational Earth-orientation inputs for one instant.
 ///
@@ -133,13 +139,49 @@ impl Observation {
     }
 }
 
-/// Epoch- and site-scoped observer calculation context.
+/// A rejected provider-neutral observer transformation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ObserverTransformError {
+    /// The supplied geocentric state was calculated for another TT epoch.
+    EpochMismatch {
+        transform_epoch: JulianDate<TerrestrialTime>,
+        state_epoch: JulianDate<TerrestrialTime>,
+    },
+    /// A zero topocentric vector has no celestial direction.
+    BodyAtObserver { epoch: JulianDate<TerrestrialTime> },
+}
+
+impl fmt::Display for ObserverTransformError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ObserverTransformError::EpochMismatch {
+                transform_epoch,
+                state_epoch,
+            } => write!(
+                formatter,
+                "observer transform TT JD {} does not match state TT JD {}",
+                transform_epoch.day(),
+                state_epoch.day()
+            ),
+            ObserverTransformError::BodyAtObserver { epoch } => write!(
+                formatter,
+                "celestial body coincides with the observer at TT JD {}",
+                epoch.day()
+            ),
+        }
+    }
+}
+
+impl ::std::error::Error for ObserverTransformError {}
+
+/// Epoch- and site-scoped transform for a supplied geocentric apparent state.
 ///
-/// The expensive ephemeris orientation and terrestrial rotation matrices are
-/// evaluated once and reused for every body in a sky view.
+/// This is the provider-neutral half of [`ObserverSky`]. It applies WGS84 site
+/// geometry, caller-supplied UT1 and polar motion, and the measured airless
+/// horizon projection without selecting an ephemeris provider.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ObserverSky {
-    apparent: ApparentSky,
+pub struct ObserverTransform {
+    epoch: JulianDate<TerrestrialTime>,
     observer: Observer,
     earth_orientation: EarthOrientation,
     gcrs_to_true_equator: [[f64; 3]; 3],
@@ -147,7 +189,7 @@ pub struct ObserverSky {
     observer_true_equator_meters: [f64; 3],
 }
 
-impl ObserverSky {
+impl ObserverTransform {
     pub fn at(
         epoch: JulianDate<TerrestrialTime>,
         earth_orientation: EarthOrientation,
@@ -177,7 +219,7 @@ impl ObserverSky {
         let observer_true_equator = matrix_vector(gcrs_to_true_equator, observer_gcrs);
 
         Self {
-            apparent: ApparentSky::at(epoch),
+            epoch,
             observer,
             earth_orientation,
             gcrs_to_true_equator,
@@ -187,7 +229,7 @@ impl ObserverSky {
     }
 
     pub fn epoch(&self) -> JulianDate<TerrestrialTime> {
-        self.apparent.epoch()
+        self.epoch
     }
 
     pub fn observer(&self) -> Observer {
@@ -198,18 +240,26 @@ impl ObserverSky {
         &self.earth_orientation
     }
 
-    pub fn position(&self, body: ApparentBody) -> Result<Modelled<Observation>, ApparentError> {
-        let geocentric = self.apparent.position(body)?.into_value();
+    pub fn observe(
+        &self,
+        geocentric: State<TrueEclipticEquinoxOfDate>,
+    ) -> Result<Modelled<Observation>, ObserverTransformError> {
+        if geocentric.epoch() != self.epoch {
+            return Err(ObserverTransformError::EpochMismatch {
+                transform_epoch: self.epoch,
+                state_epoch: geocentric.epoch(),
+            });
+        }
         let geocentric_equatorial =
-            ecliptic_to_equatorial(self.epoch(), geocentric.direction(), geocentric.distance());
+            ecliptic_to_equatorial(self.epoch, geocentric.direction(), geocentric.distance());
         let topocentric_vector = subtract(geocentric_equatorial, self.observer_true_equator_meters);
         let topocentric_distance = norm(topocentric_vector);
         let equatorial_direction =
             UnitVector::<TopocentricTrueEquatorEquinoxOfDate>::new(topocentric_vector)
-                .expect("a celestial body cannot coincide with the observer")
+                .map_err(|_| ObserverTransformError::BodyAtObserver { epoch: self.epoch })?
                 .to_direction();
         let equatorial = State::new(
-            self.epoch(),
+            self.epoch,
             equatorial_direction,
             Distance::from_meters(topocentric_distance)
                 .expect("topocentric distance is finite and nonnegative"),
@@ -227,6 +277,56 @@ impl ObserverSky {
                 equatorial,
                 horizon,
             },
+            AIRLESS_TOPOCENTRIC_TRANSFORM,
+            observer_accuracy(),
+        ))
+    }
+}
+
+/// Epoch- and site-scoped observer calculation context.
+///
+/// The expensive ephemeris orientation and terrestrial rotation matrices are
+/// evaluated once and reused for every body in a sky view.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ObserverSky {
+    apparent: ApparentSky,
+    transform: ObserverTransform,
+}
+
+impl ObserverSky {
+    pub fn at(
+        epoch: JulianDate<TerrestrialTime>,
+        earth_orientation: EarthOrientation,
+        observer: Observer,
+    ) -> Self {
+        Self {
+            apparent: ApparentSky::at(epoch),
+            transform: ObserverTransform::at(epoch, earth_orientation, observer),
+        }
+    }
+
+    pub fn epoch(&self) -> JulianDate<TerrestrialTime> {
+        self.apparent.epoch()
+    }
+
+    pub fn observer(&self) -> Observer {
+        self.transform.observer()
+    }
+
+    pub fn earth_orientation(&self) -> &EarthOrientation {
+        self.transform.earth_orientation()
+    }
+
+    pub fn position(&self, body: ApparentBody) -> Result<Modelled<Observation>, ApparentError> {
+        let geocentric = self.apparent.position(body)?.into_value();
+        let observation = self
+            .transform
+            .observe(geocentric)
+            .expect("ObserverSky supplies a state at the transform epoch")
+            .into_value();
+
+        Ok(Modelled::new(
+            observation,
             ANALYTICAL_TOPOCENTRIC,
             observer_accuracy(),
         ))

@@ -25,9 +25,9 @@ This is the canonical index for active documents in `design_docs/`.
 - [2026-08-13_provider_architecture.md](2026-08-13_provider_architecture.md):
   provider boundary, verification doctrine, and landed T2 through live T4
   addenda.
-The completed T4e and live-kernel verification plans are archived under
-`archive_docs/2026-08-24/`. Remaining event gates are canonical in
-`ROADMAP.md`.
+The completed T4e, live-kernel verification, and airless altitude-crossing
+plans are archived under `archive_docs/2026-08-24/`. Remaining event gates are
+canonical in `ROADMAP.md`.
 
 ## Maintainer-owned project description
 

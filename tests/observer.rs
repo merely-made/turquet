@@ -14,7 +14,14 @@ use turquet::foundation::{
     EastLongitude, JulianDate, Latitude, Length, Observer, ScaleAwareEpoch, TerrestrialTime,
     TimeOffset, UniversalTime1,
 };
-use turquet::observer::{position, EarthOrientation, ObserverSky, ANALYTICAL_TOPOCENTRIC};
+use turquet::observer::{
+    position, EarthOrientation, ObserverSky, ObserverTransform, ObserverTransformError,
+    AIRLESS_TOPOCENTRIC_TRANSFORM, ANALYTICAL_TOPOCENTRIC,
+};
+use turquet::provider::{
+    AnalyticalEphemeris, ConstantOffsetEarthOrientation, EarthOrientationProvider,
+    GeocentricPositionProvider,
+};
 
 const VECTORS: &str = include_str!("vectors/observer_horizons.tsv");
 
@@ -55,6 +62,94 @@ fn boston_eclipse_moon_matches_horizons() {
         observation.earth_orientation().snapshot(),
         "eop.260821.p261117; polar motion approximated as zero"
     );
+}
+
+#[test]
+fn provider_neutral_transform_preserves_the_observer_projection() {
+    let utc = ScaleAwareEpoch::from_gregorian_utc(2024, 4, 8, 18, 0, 0, 0);
+    let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
+    let ut1 = JulianDate::<UniversalTime1>::from_utc_epoch(
+        utc,
+        TimeOffset::from_seconds(-0.01669).expect("finite DUT1"),
+    );
+    let earth_orientation = EarthOrientation::zero_polar_motion(
+        ut1,
+        "NASA/JPL Horizons quantity 49",
+        "eop.260821.p261117; polar motion approximated as zero",
+    );
+    let observer = Observer::new(
+        EastLongitude::from_degrees(-71.0589).expect("Boston longitude"),
+        Latitude::from_degrees(42.3601).expect("Boston latitude"),
+        Length::from_meters(43.0).expect("Boston height"),
+    );
+    let analytical = AnalyticalEphemeris;
+    let state = analytical
+        .position(ApparentBody::Moon, tt)
+        .expect("Moon is supported");
+
+    let transformed = ObserverTransform::at(tt, earth_orientation.clone(), observer)
+        .observe(state)
+        .expect("matching state epoch");
+    let wrapped = ObserverSky::at(tt, earth_orientation, observer)
+        .position(ApparentBody::Moon)
+        .expect("Moon is supported");
+
+    assert_eq!(transformed.model(), AIRLESS_TOPOCENTRIC_TRANSFORM);
+    assert_eq!(transformed.value(), wrapped.value());
+    assert_eq!(wrapped.model(), ANALYTICAL_TOPOCENTRIC);
+}
+
+#[test]
+fn provider_neutral_transform_rejects_another_state_epoch() {
+    let utc = ScaleAwareEpoch::from_gregorian_utc(2024, 4, 8, 18, 0, 0, 0);
+    let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
+    let other_tt = tt.offset_days(1.0).expect("finite next day");
+    let ut1 = JulianDate::<UniversalTime1>::from_utc_epoch(
+        utc,
+        TimeOffset::from_seconds(-0.01669).expect("finite DUT1"),
+    );
+    let transform = ObserverTransform::at(
+        tt,
+        EarthOrientation::zero_polar_motion(ut1, "test", "epoch mismatch"),
+        Observer::new(
+            EastLongitude::from_degrees(0.0).unwrap(),
+            Latitude::from_degrees(0.0).unwrap(),
+            Length::from_meters(0.0).unwrap(),
+        ),
+    );
+    let state = AnalyticalEphemeris
+        .position(ApparentBody::Sun, other_tt)
+        .expect("Sun is supported");
+
+    assert_eq!(
+        transform.observe(state).unwrap_err(),
+        ObserverTransformError::EpochMismatch {
+            transform_epoch: tt,
+            state_epoch: other_tt,
+        }
+    );
+}
+
+#[test]
+fn constant_offset_earth_orientation_advances_ut1_and_keeps_identity() {
+    let utc = ScaleAwareEpoch::from_gregorian_utc(2024, 4, 8, 18, 0, 0, 0);
+    let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
+    let ut1 = JulianDate::<UniversalTime1>::from_utc_epoch(
+        utc,
+        TimeOffset::from_seconds(-0.01669).expect("finite DUT1"),
+    );
+    let source = ConstantOffsetEarthOrientation::new(
+        tt,
+        EarthOrientation::zero_polar_motion(ut1, "test authority", "test snapshot"),
+    );
+    let later_tt = tt.offset_days(0.25).expect("finite later epoch");
+    let later = source.at(later_tt).unwrap();
+
+    assert!((later.ut1().day() - ut1.day() - 0.25).abs() < 1e-12);
+    assert_eq!(source.authority(), "test authority");
+    assert_eq!(later.authority(), "test authority");
+    assert_eq!(source.data_snapshot(), "test snapshot");
+    assert_eq!(later.snapshot(), "test snapshot");
 }
 
 #[test]
