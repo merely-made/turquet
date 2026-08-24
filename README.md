@@ -14,8 +14,9 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.3.0` provides
-Turquet's typed geocentric and observer-relative analytical ephemeris; the
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.4.0` provides
+Turquet's typed geocentric and observer-relative analytical ephemeris and
+opens the provider-neutral event API with bounded conjunction searches. The
 original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
@@ -56,6 +57,13 @@ T3 is measured against 112,137 DE440s geocentric samples across 1885-2099 and
 committed observer cohort's worst angular residual is 0.001522 degrees. Tests
 also cover an eclipse, a Mercury station bracket, lunar perigee and apogee,
 and a high-latitude site.
+
+The first T4 slice adds `GeocentricPositionProvider` and an apparent
+ecliptic-longitude conjunction search. Search step and tolerance are explicit,
+results are TT intervals carrying provider model and runtime snapshot
+identity, position failures remain errors, and each conjunction reports its
+great-circle separation. The same algorithm is exercised with the analytical
+engine and committed NASA/JPL Horizons positions.
 
 ## Direction
 
@@ -112,6 +120,12 @@ motion are observed facts rather than timeless constants. Outputs retain that
 snapshot and expose topocentric right ascension/declination, azimuth/altitude,
 and observer range. Atmospheric refraction remains an application-selected
 policy rather than an implicit correction.
+
+Event searches use `provider::AnalyticalEphemeris` by default and accept any
+implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
+implements the same contract when the `verify` feature is enabled. T4 still
+has open slices for stations, phases, eclipses, rise/set, visibility, and
+extrema.
 
 ## Verification
 

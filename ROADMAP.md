@@ -116,6 +116,22 @@ high-latitude Tromso site. See
 Done when the same event algorithms operate over both analytical and external
 verification providers.
 
+**First slice completed 2026-08-23.** `provider` now defines the typed
+`GeocentricPositionProvider` seam, implemented by the kernel-free analytical
+engine and the opt-in JPL SPK verifier. `events` searches apparent
+ecliptic-longitude conjunctions with configurable safe sampling and a caller
+selected time tolerance. Results are TT intervals, retain provider model
+and runtime snapshot identity, report midpoint angular separation, and
+propagate provider failures.
+The 2024 eclipse conjunction is exercised through both the analytical engine
+and a committed DE441/Horizons fixture: their midpoints differ by 4.102
+seconds, while the analytical result is 8.571 seconds from NASA's published
+ecliptic conjunction. See
+`receipts/2026-08-23_t4a_conjunction_search.md`.
+
+T4 remains open for station roots, phases, eclipse geometry, rise/set,
+visibility, extrema, and event execution over a live kernel-backed verifier.
+
 ## T5: Consumers and embedding
 
 - Prove one legitimate astronomy consumer and one interpretive consumer.

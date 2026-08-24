@@ -1,7 +1,7 @@
 # Public calculation audit
 
-This is the T1 boundary map with T2 and T3 public-contract addenda for Turquet
-0.3.0. It inventories every exported calculation in the crate as of
+This is the T1 boundary map with T2, T3, and T4a public-contract addenda for
+Turquet 0.4.0. It inventories every exported calculation in the crate as of
 2026-08-23. It is descriptive, not an accuracy certificate.
 
 The status words have narrow meanings:
@@ -21,9 +21,9 @@ coefficient revision, validity interval, or expected error. Those omissions
 remain omissions here rather than being filled with guesses.
 
 All inherited symbols in the tables below are shorthand for paths under
-`turquet::compat`. Their source modules are private in 0.3.0. The Turquet-era
-`foundation`, `orientation`, `apparent`, and `observer` modules form the
-primary API.
+`turquet::compat`. Their source modules are private in 0.4.0. The Turquet-era
+`foundation`, `orientation`, `apparent`, `observer`, `provider`, and `events`
+modules form the primary API.
 
 ## Turquet-era surface
 
@@ -40,8 +40,10 @@ primary API.
 | `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. Targeted eclipse and lunar distance-extreme vectors also pass. | measured |
 | `apparent::is_retrograde` | Typed TT epoch; central difference of typed apparent longitude over one TT day. | Same body range, narrowed by half a day at both edges. A 2024 Mercury station is bracketed against Horizons positions. This classifies direction; solving the event instant belongs to T4. | measured |
 | `observer::{EarthOrientation, ObserverSky, Observation, position}` | Typed TT ephemeris plus typed UT1 Earth rotation, caller-supplied polar motion and runtime snapshot identity, and WGS84 observer to topocentric true-equatorial state plus airless north-zero horizon direction. Observer origin is encoded in distinct frame markers. | 90 DE441/Horizons vectors: all ten bodies, three epochs, Boston/Sydney/Tromso, measured worst 0.001522 degrees and 0.000108 AU. Compile-fail proof rejects TT where UT1 is required. | measured |
+| `provider::{GeocentricPositionProvider, AnalyticalEphemeris, ANALYTICAL_EPHEMERIS}` | Provider-neutral TT to geocentric apparent true-ecliptic-of-date state, with explicit model identity, optional runtime data snapshot, and provider-specific errors. | Analytical implementation plus compile-checked opt-in `JplVerifier` implementation; a committed Horizons fixture is the executable second provider in ordinary tests. `JplVerifier` computes and retains the supplied kernel's SHA-256. | measured |
+| `events::{SearchWindow, EventInterval, EclipticLongitudeConjunction, ecliptic_longitude_conjunctions}` | Searches two distinct bodies for apparent ecliptic-longitude equality. Sampling is limited to one TT day; tolerance is caller-selected and results are bounded TT intervals with midpoint great-circle separation plus provider model/snapshot identity. | 2024 eclipse: analytical midpoint 8.571 seconds from NASA's published conjunction, Horizons-fixture midpoint 4.469 seconds from NASA, providers differ by 4.102 seconds. Wrap, opposition, invalid-control, same-body, and provider-failure tests. | measured |
 | `compat::apparent::{jde_tt_frm_epoch, jde_tt_frm_utc, geocent_apparent_ecl_pos, is_retrograde}` | Anonymous-scalar compatibility wrappers for the 0.1 API. | Covered against the typed path; deprecated contract shape. | measured |
-| `verify::JplVerifier::open`, `verify::JplVerifier::geocent_apparent_ecl_pos` | Opt-in ANISE/DE440s reader with SOFA-derived IAU 1976/1980 frame transforms; returns apparent geocentric ecliptic-of-date radians. | Kernel-defined; maintainer supplied. Not shipped in the default feature graph. | tooling |
+| `verify::JplVerifier::{open, geocent_apparent_ecl_pos, geocent_apparent_state}` | Opt-in ANISE/SPK reader with SOFA-derived IAU 1976/1980 frame transforms; returns scalar coordinates or a typed state and implements the event provider contract. | Kernel-defined; maintainer supplied. The implementation is compile-checked with `--all-features`; live-kernel event execution remains an open T4 receipt. | tooling |
 
 ## Angles and coordinate transforms
 
@@ -159,7 +161,7 @@ constants; and the public enums/records in `coords`, `time`, `orbit`, `lunar`,
 units stated in local rustdoc. Where a type is only a bundle of anonymous
 `f64` values, it does not add frame, time-scale, model, or range safety.
 
-## T1 through T3 conclusion
+## T1 through T3 conclusion and T4a addendum
 
 The three known upstream numerical defects are repaired by the accompanying
 T1 change. The inventory is complete enough to expose the real boundary:
@@ -177,3 +179,7 @@ explicit corrections and broad date evidence, while the observer path binds
 Earth rotation and site geometry to separately typed inputs and retains the
 external Earth-orientation snapshot. Event searches, atmospheric policy, and
 interpretation remain outside this position-provider boundary.
+
+T4a makes that boundary executable for more than one implementation and lands
+the first typed event search. It does not complete T4: the remaining event
+families and a live-kernel event receipt stay explicit in `ROADMAP.md`.

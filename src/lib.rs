@@ -28,6 +28,8 @@ extern crate sofars;
 
 #[cfg(feature = "verify")]
 extern crate anise;
+#[cfg(feature = "verify")]
+extern crate sha2;
 
 #[macro_use]
 mod util;
@@ -42,6 +44,7 @@ mod atmos;
 mod binary_star;
 mod consts;
 mod ecliptic;
+pub mod events;
 pub mod foundation;
 mod interpol;
 mod lunar;
@@ -54,6 +57,7 @@ mod parallax;
 mod planet;
 mod pluto;
 mod precess;
+pub mod provider;
 mod star;
 mod sun;
 mod time;

@@ -42,6 +42,7 @@ use lunar;
 use orientation;
 use planet;
 use pluto;
+use std::fmt;
 
 /// Astronomical units travelled by light in one day.
 const LIGHT_SPEED_AU_PER_DAY: f64 = 173.144_632_674_24;
@@ -201,6 +202,24 @@ pub enum ApparentError {
         julian_year: f64,
     },
 }
+
+impl fmt::Display for ApparentError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ApparentError::BeforeLeapSecondEra => {
+                write!(formatter, "UTC input precedes the 1972 leap-second era")
+            }
+            ApparentError::InvalidCivilTime => write!(formatter, "invalid UTC calendar fields"),
+            ApparentError::OutsideSeriesRange { body, julian_year } => write!(
+                formatter,
+                "{} is outside its analytical series at Julian year {:.6}",
+                body, julian_year
+            ),
+        }
+    }
+}
+
+impl ::std::error::Error for ApparentError {}
 
 /// Apparent geocentric state on the true ecliptic and equinox of date.
 ///

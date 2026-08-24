@@ -1,0 +1,12 @@
+# Turquet T4a conjunction vectors
+# oracle: NASA/JPL Horizons API 1.2, DE441, geocenter 500@399, quantities 20 and 31
+# generated: 2026-08-23; apparent IAU76/80 ecliptic of date
+# reference: NASA GSFC 2024-04-08 ecliptic conjunction 18:20:46.8 UT
+# regenerate: pwsh -File scripts/fetch_horizons_conjunction_vectors.ps1 > tests/vectors/eclipse_conjunction_horizons.tsv
+# columns: body, JD UTC, apparent longitude degrees, apparent latitude degrees, range AU
+sun	2460409.256944444	19.3930148	-0.0000533	1.00150555960999
+sun	2460409.263888889	19.3998410	-0.0000530	1.00150754279932
+sun	2460409.270833333	19.4066673	-0.0000527	1.00150952588558
+moon	2460409.256944444	19.2873521	0.3388715	0.00240507193402
+moon	2460409.263888889	19.3914822	0.3484973	0.00240515883803
+moon	2460409.270833333	19.4956050	0.3581212	0.00240524632137

@@ -130,3 +130,13 @@ true-equatorial output, and airless horizon output. The committed observer
 cohort and targeted station, eclipse, lunar-distance, and high-latitude cases
 close the remaining T3 evidence. See
 `receipts/2026-08-23_t3_analytical_ephemeris.md` for the final measurements.
+
+## T4a addendum: 2026-08-23
+
+The provider trait assumed by the original diagram is now live as
+`provider::GeocentricPositionProvider`. The analytical engine and opt-in
+`JplVerifier` implement it, and `events::ecliptic_longitude_conjunctions` is
+its first forcing consumer. Ordinary CI supplies the second implementation
+through committed Horizons vectors, so the shared algorithm is executable
+without a kernel. Live-kernel event execution and the remaining event
+families are still T4 work.

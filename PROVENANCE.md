@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.3.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.4.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -58,3 +58,25 @@ observer quantities 2, 4, 20, and 49, and EOP snapshot
 the checked Turquet fixture explicitly sets polar motion to zero and records
 that approximation. The regeneration script is
 `scripts/fetch_horizons_observer_vectors.ps1`.
+
+## Event verification
+
+`tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
+Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23
+using DE441 and observer-table quantities 20 and 31. The reference event is
+NASA GSFC's published 2024-04-08 ecliptic conjunction at 18:20:46.8 UT:
+<https://eclipse.gsfc.nasa.gov/SEhistory/SEplot/SE2024Apr08T.pdf>.
+
+The fixture is external input to a test-only provider. It does not route
+through Turquet's analytical series. Horizons quantity 31 is apparent
+observer-centered IAU76/80 ecliptic-of-date longitude and latitude; its
+definition is in the official manual:
+<https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+Regenerate the fixture with
+`scripts/fetch_horizons_conjunction_vectors.ps1`; the script emits the API
+version and complete header with the data rows.
+
+When the opt-in `JplVerifier` reads a caller-supplied SPK kernel, it computes
+the file's SHA-256 and carries that runtime snapshot into event results. The
+digest records identity; it is not an allowlist or an accuracy claim.
