@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.7.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.8.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -119,8 +119,24 @@ The model is explicitly atmosphere-free. It does not apply the enlarged
 terrestrial shadow used for eclipse contact predictions. For example, NASA's
 detailed 2025-03-14 eclipse plot reports enlarged penumbral and umbral radii:
 <https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2025Mar14T.pdf>. Turquet's
-smaller geometric radii are therefore candidate and coarse-classification
-facts rather than claims of NASA-compatible contact timing.
+smaller geometric radii therefore produce deliberately different contact
+times rather than claims of NASA-compatible shadow modeling.
+
+`tests/vectors/lunar_eclipse_circumstances_horizons.tsv` contains 162 apparent
+Sun and Moon position facts at fifteen-minute spacing across the complete
+contacts of the 2024-03-25 penumbral, 2024-09-18 partial, and 2025-03-14 total
+lunar eclipses. Regenerate them with
+`scripts/fetch_horizons_lunar_eclipse_circumstances.ps1`. Published greatest
+and contact times come from NASA's detailed plots for
+[2024-03-25](https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2024Mar25N.pdf),
+[2024-09-18](https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2024Sep18P.pdf),
+and
+[2025-03-14](https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2025Mar14T.pdf).
+NASA defines P1/P4 as external penumbral tangencies, U1/U4 as external umbral
+tangencies, U2/U3 as internal umbral tangencies, and greatest eclipse as the
+minimum center-to-axis distance. Its plots use the Danjon shadow enlargement.
+Tests therefore gate tight analytical-versus-Horizons agreement while
+retaining the measured systematic offset from NASA contact times.
 
 When the opt-in `JplVerifier` reads a caller-supplied SPK kernel, it computes
 the file's SHA-256 and carries that runtime snapshot into event results. The

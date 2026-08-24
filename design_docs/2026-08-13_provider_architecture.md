@@ -172,3 +172,17 @@ phase interval, and every angular term used by its predicate. NASA-listed
 events and ordinary phase controls run through both analytical and committed
 Horizons providers. Observer contacts, solar local type, visibility, Earth
 oblateness, atmospheric shadow enlargement, and terrain remain later layers.
+
+## T4e addendum: 2026-08-24
+
+Lunar eclipse circumstances now refine the minimum geocentric
+Moon-to-shadow-axis offset and solve every applicable spherical-shadow
+tangency on either side of that minimum. The caller owns the full search span;
+Turquet rejects spans whose endpoints remain inside the penumbra instead of
+silently returning an incomplete contact set.
+
+Greatest eclipse, P1/P4, U1/U4, and U2/U3 are bounded TT intervals carrying
+the provider model and runtime snapshot. The same solver runs over analytical
+states and committed Horizons facts. Contacts remain atmosphere-free and
+geocentric. Observer-relative solar contacts, local eclipse type, visibility,
+atmospheric enlargement, oblateness, and terrain remain separate contracts.

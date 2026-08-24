@@ -1,7 +1,7 @@
 # Public calculation audit
 
 This is the T1 boundary map with T2, T3, and T4 public-contract addenda for
-Turquet 0.7.0. It inventories every exported calculation in the crate as of
+Turquet 0.8.0. It inventories every exported calculation in the crate as of
 2026-08-24. It is descriptive, not an accuracy certificate.
 
 The status words have narrow meanings:
@@ -21,7 +21,7 @@ coefficient revision, validity interval, or expected error. Those omissions
 remain omissions here rather than being filled with guesses.
 
 All inherited symbols in the tables below are shorthand for paths under
-`turquet::compat`. Their source modules are private in 0.7.0. The Turquet-era
+`turquet::compat`. Their source modules are private in 0.8.0. The Turquet-era
 `foundation`, `orientation`, `apparent`, `observer`, `provider`, and `events`
 modules form the primary API.
 
@@ -45,6 +45,7 @@ modules form the primary API.
 | `events::{StationSearch, LongitudeMotion, EclipticLongitudeStation, ecliptic_longitude_stations}` | Searches sign changes in apparent ecliptic-longitude speed. Sampling, time tolerance, and the full central-difference span are explicit; each bounded TT result reports longitude, motion on both sides, provider identity, and the retained velocity span. | 2024 Mercury direct station over a six-hour difference: analytical and hourly Horizons-fixture midpoints differ by 0.659 seconds and longitudes by 0.0000441 degrees. Invalid-span, wrap, direction, interval, and provider-failure tests. | measured |
 | `events::{LunarPhase, LunarPhaseEvent, ecliptic_longitude_lunar_phases}` | Searches all four quarter angles of apparent Moon-minus-Sun ecliptic longitude and returns bounded TT intervals with midpoint great-circle separation and provider identity. | Four April 2024 phases checked against NASA GSFC's minute catalogue through analytical and Horizons providers. Worst provider difference 5.273 seconds; both lanes remain within 20 seconds of the published minute. Sequence, wrap, interval, and provider-failure tests. | measured |
 | `events::{EclipseCandidateKind, EclipseCandidateGeometry, EclipseCandidate, eclipse_candidates}` and eclipse radius/model constants | Filters new and full moons with revisioned atmosphere-free spherical geometry. Solar results disclose geocentric disk separation, angular radii, and a conservative global observer-parallax allowance. Lunar results disclose Moon and shadow radii plus antisolar-axis separation, classified as penumbral, partial, or total. Results retain the phase interval and both geometry and provider identities. Local solar type, contacts, visibility, atmosphere, oblateness, and terrain are outside this contract. | Analytical and DE441/Horizons providers agree on NASA's 2024-03-25 penumbral lunar, 2024-04-08 solar, 2024-09-18 partial lunar, 2025-03-14 total lunar, and 2025-03-29 partial solar events. The latter requires the parallax allowance. Both reject ordinary 2024-04-23 full and 2024-05-08 new moons. Measured worst provider phase-root difference is 12.891 seconds and worst reported angular-term difference is 0.000741 degrees. Invalid-distance behavior is typed and tested. | measured |
+| `events::{LunarEclipseSearch, LunarEclipseGeometry, LunarEclipseKind, LunarEclipseContactKind, LunarEclipseContact, LunarEclipseCircumstances, lunar_eclipse_circumstances}` | Refines minimum Moon-to-shadow-axis offset and all class-applicable lunar shadow tangencies within a caller-selected full circumstance span. Greatest eclipse and P1/P4, U1/U4, and U2/U3 are bounded TT intervals. Results retain phase interval, greatest geometry, spherical-model revision, provider identity, and span. Short spans are typed errors. The shadow is geocentric, spherical, and atmosphere-free; observer visibility and NASA's Danjon enlargement are outside the model. | Penumbral 2024-03-25, partial 2024-09-18, and total 2025-03-14 events run over both analytical and DE441/Horizons providers. The measured worst provider difference is 8.708 seconds at greatest eclipse and 22.595 seconds across twelve contacts. Greatest events remain within 15.415 seconds of NASA plots; atmosphere-free contacts remain within 247.598 seconds of NASA's enlarged-shadow times. Every result interval is at most one second wide. Invalid and insufficient spans are tested. | measured |
 | `compat::apparent::{jde_tt_frm_epoch, jde_tt_frm_utc, geocent_apparent_ecl_pos, is_retrograde}` | Anonymous-scalar compatibility wrappers for the 0.1 API. | Covered against the typed path; deprecated contract shape. | measured |
 | `verify::JplVerifier::{open, geocent_apparent_ecl_pos, geocent_apparent_state}` | Opt-in ANISE/SPK reader with SOFA-derived IAU 1976/1980 frame transforms; returns scalar coordinates or a typed state and implements the event provider contract. | Kernel-defined; maintainer supplied. The implementation is compile-checked with `--all-features`; live-kernel event execution remains an open T4 receipt. | tooling |
 
@@ -188,6 +189,7 @@ the first typed event search. T4b adds provider-neutral stationary-point roots
 with an explicit numerical definition. T4c adds all four lunar quarter-phase
 roots while retaining latitude through the reported center separation. T4d
 adds provider-neutral global solar candidates and geocentric lunar shadow
-classes without claiming contacts or local visibility. These slices do not
-complete T4: the remaining event families and a live-kernel event receipt stay
-explicit in `ROADMAP.md`.
+classes. T4e refines lunar greatest events and atmosphere-free shadow contacts
+without claiming observer visibility or local solar circumstances. These
+slices do not complete T4: the remaining event families and a live-kernel
+event receipt stay explicit in `ROADMAP.md`.

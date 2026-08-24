@@ -151,9 +151,17 @@ and Horizons providers agree on five NASA-listed eclipses across every lunar
 class and two solar geometries, and reject an ordinary new and full moon. See
 `receipts/2026-08-24_t4d_eclipse_candidates.md`.
 
-T4 remains open for eclipse contacts and observer visibility, rise/set,
-general visibility, illuminated-fraction and distance extrema, and event
-execution over a live kernel-backed verifier.
+**Fifth slice completed 2026-08-24.** `events` now refines the geocentric
+greatest event and every applicable lunar shadow contact to caller-bounded TT
+intervals. The caller selects a full circumstance span and receives a typed
+error when its endpoints do not bracket the penumbra. Across penumbral,
+partial, and total eclipses, analytical and DE441/Horizons providers agree
+within 8.708 seconds at greatest eclipse and 22.595 seconds at contacts. See
+`receipts/2026-08-24_t4e_lunar_eclipse_circumstances.md`.
+
+T4 remains open for observer-relative solar contacts and eclipse visibility,
+rise/set, general visibility, illuminated-fraction and distance extrema, and
+event execution over a live kernel-backed verifier.
 
 ## T5: Consumers and embedding
 

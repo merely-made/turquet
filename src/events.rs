@@ -12,7 +12,8 @@ use std::fmt;
 
 use apparent::ApparentBody;
 use foundation::{
-    Angle, JulianDate, Longitude, Model, State, TerrestrialTime, TrueEclipticEquinoxOfDate,
+    Angle, Distance, JulianDate, Longitude, Model, State, TerrestrialTime,
+    TrueEclipticEquinoxOfDate,
 };
 use provider::GeocentricPositionProvider;
 
@@ -31,6 +32,9 @@ pub const MAX_CONJUNCTION_STEP_DAYS: f64 = MAX_EVENT_STEP_DAYS;
 
 /// Maximum full interval accepted for a station's central-difference speed.
 pub const MAX_STATION_VELOCITY_SPAN_DAYS: f64 = 1.0;
+
+/// Maximum full interval refined around a lunar eclipse's phase root.
+pub const MAX_LUNAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS: f64 = 1.0;
 
 /// IAU 2015 nominal solar radius used by the eclipse geometry model.
 pub const NOMINAL_SOLAR_RADIUS_KM: f64 = 695_700.0;
@@ -187,6 +191,80 @@ impl fmt::Display for StationSearchError {
 }
 
 impl ::std::error::Error for StationSearchError {}
+
+/// Numerical controls for lunar greatest-event and contact solving.
+///
+/// The phase window locates full-moon roots. `circumstance_span_days` is the
+/// full TT interval, centered on each phase root, within which Turquet refines
+/// greatest eclipse and brackets every contact. Provider requests therefore
+/// extend half this span beyond the phase midpoint.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LunarEclipseSearch {
+    phase_window: SearchWindow,
+    circumstance_span_days: f64,
+}
+
+impl LunarEclipseSearch {
+    pub fn new(
+        phase_window: SearchWindow,
+        circumstance_span_days: f64,
+    ) -> Result<Self, LunarEclipseSearchError> {
+        if !circumstance_span_days.is_finite() {
+            return Err(LunarEclipseSearchError::SpanNotFinite);
+        }
+        if circumstance_span_days <= 0.0 {
+            return Err(LunarEclipseSearchError::SpanNotPositive);
+        }
+        if circumstance_span_days > MAX_LUNAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS {
+            return Err(LunarEclipseSearchError::SpanTooLarge);
+        }
+        if circumstance_span_days <= 2.0 * phase_window.tolerance_days {
+            return Err(LunarEclipseSearchError::ToleranceExceedsHalfSpan);
+        }
+        Ok(Self {
+            phase_window,
+            circumstance_span_days,
+        })
+    }
+
+    pub fn phase_window(self) -> SearchWindow {
+        self.phase_window
+    }
+
+    pub fn circumstance_span_days(self) -> f64 {
+        self.circumstance_span_days
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LunarEclipseSearchError {
+    SpanNotFinite,
+    SpanNotPositive,
+    SpanTooLarge,
+    ToleranceExceedsHalfSpan,
+}
+
+impl fmt::Display for LunarEclipseSearchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let message = match *self {
+            LunarEclipseSearchError::SpanNotFinite => {
+                "lunar eclipse circumstance span must be finite"
+            }
+            LunarEclipseSearchError::SpanNotPositive => {
+                "lunar eclipse circumstance span must be positive"
+            }
+            LunarEclipseSearchError::SpanTooLarge => {
+                "lunar eclipse circumstance span exceeds one TT day"
+            }
+            LunarEclipseSearchError::ToleranceExceedsHalfSpan => {
+                "event tolerance must be smaller than half the circumstance span"
+            }
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl ::std::error::Error for LunarEclipseSearchError {}
 
 /// The TT interval known to contain an event.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -444,6 +522,164 @@ impl EclipseCandidate {
     }
 }
 
+/// Atmosphere-free spherical shadow geometry at one lunar eclipse epoch.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LunarEclipseGeometry {
+    shadow_axis_separation: Angle,
+    shadow_axis_offset: Distance,
+    moon_angular_radius: Angle,
+    umbra_angular_radius: Angle,
+    umbra_radius: Distance,
+    penumbra_angular_radius: Angle,
+    penumbra_radius: Distance,
+}
+
+impl LunarEclipseGeometry {
+    pub fn shadow_axis_separation(self) -> Angle {
+        self.shadow_axis_separation
+    }
+
+    pub fn shadow_axis_offset(self) -> Distance {
+        self.shadow_axis_offset
+    }
+
+    pub fn moon_angular_radius(self) -> Angle {
+        self.moon_angular_radius
+    }
+
+    pub fn umbra_angular_radius(self) -> Angle {
+        self.umbra_angular_radius
+    }
+
+    pub fn umbra_radius(self) -> Distance {
+        self.umbra_radius
+    }
+
+    pub fn penumbra_angular_radius(self) -> Angle {
+        self.penumbra_angular_radius
+    }
+
+    pub fn penumbra_radius(self) -> Distance {
+        self.penumbra_radius
+    }
+}
+
+/// Geocentric lunar eclipse class at greatest eclipse.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LunarEclipseKind {
+    Penumbral,
+    Partial,
+    Total,
+}
+
+/// One conventional contact between the lunar disk and Earth's shadow.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LunarEclipseContactKind {
+    PenumbralIngress,
+    UmbralIngress,
+    TotalityBegins,
+    TotalityEnds,
+    UmbralEgress,
+    PenumbralEgress,
+}
+
+impl LunarEclipseContactKind {
+    pub fn abbreviation(self) -> &'static str {
+        match self {
+            LunarEclipseContactKind::PenumbralIngress => "P1",
+            LunarEclipseContactKind::UmbralIngress => "U1",
+            LunarEclipseContactKind::TotalityBegins => "U2",
+            LunarEclipseContactKind::TotalityEnds => "U3",
+            LunarEclipseContactKind::UmbralEgress => "U4",
+            LunarEclipseContactKind::PenumbralEgress => "P4",
+        }
+    }
+}
+
+/// A bounded TT interval containing one lunar eclipse contact.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LunarEclipseContact {
+    kind: LunarEclipseContactKind,
+    interval: EventInterval,
+}
+
+impl LunarEclipseContact {
+    pub fn kind(self) -> LunarEclipseContactKind {
+        self.kind
+    }
+
+    pub fn interval(self) -> EventInterval {
+        self.interval
+    }
+}
+
+/// Greatest geometry and ordered contacts for one geocentric lunar eclipse.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LunarEclipseCircumstances {
+    kind: LunarEclipseKind,
+    phase_interval: EventInterval,
+    greatest_interval: EventInterval,
+    greatest_geometry: LunarEclipseGeometry,
+    contacts: Vec<LunarEclipseContact>,
+    circumstance_span_days: f64,
+    geometry_model: Model,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+}
+
+#[derive(Clone, Copy)]
+struct LunarShadowGeometry {
+    public: LunarEclipseGeometry,
+    shadow_axis_offset_km: f64,
+    umbra_radius_km: f64,
+    penumbra_radius_km: f64,
+}
+
+#[derive(Clone, Copy)]
+enum LunarContactBoundary {
+    Penumbral,
+    Umbral,
+    Total,
+}
+
+impl LunarEclipseCircumstances {
+    pub fn kind(&self) -> LunarEclipseKind {
+        self.kind
+    }
+
+    pub fn phase_interval(&self) -> EventInterval {
+        self.phase_interval
+    }
+
+    pub fn greatest_interval(&self) -> EventInterval {
+        self.greatest_interval
+    }
+
+    pub fn greatest_geometry(&self) -> LunarEclipseGeometry {
+        self.greatest_geometry
+    }
+
+    pub fn contacts(&self) -> &[LunarEclipseContact] {
+        &self.contacts
+    }
+
+    pub fn circumstance_span_days(&self) -> f64 {
+        self.circumstance_span_days
+    }
+
+    pub fn geometry_model(&self) -> Model {
+        self.geometry_model
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+}
+
 #[derive(Debug)]
 pub enum EventError<E> {
     SameBody,
@@ -452,6 +688,10 @@ pub enum EventError<E> {
         epoch: JulianDate<TerrestrialTime>,
         distance_km: f64,
         required_greater_than_km: f64,
+    },
+    CircumstanceSpanTooShort {
+        phase_epoch: JulianDate<TerrestrialTime>,
+        span_days: f64,
     },
     Position {
         body: ApparentBody,
@@ -477,6 +717,15 @@ impl<E: fmt::Display> fmt::Display for EventError<E> {
                 epoch.day(),
                 required_greater_than_km
             ),
+            EventError::CircumstanceSpanTooShort {
+                phase_epoch,
+                span_days,
+            } => write!(
+                formatter,
+                "lunar eclipse span {} TT days around phase JD {} does not reach both penumbral exterior states",
+                span_days,
+                phase_epoch.day()
+            ),
             EventError::Position {
                 body,
                 epoch,
@@ -496,7 +745,9 @@ impl<E: ::std::error::Error + 'static> ::std::error::Error for EventError<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
             EventError::Position { ref source, .. } => Some(source),
-            EventError::SameBody | EventError::DistanceTooSmall { .. } => None,
+            EventError::SameBody
+            | EventError::DistanceTooSmall { .. }
+            | EventError::CircumstanceSpanTooShort { .. } => None,
         }
     }
 }
@@ -674,6 +925,120 @@ where
     }
 
     Ok(candidates)
+}
+
+/// Refine greatest eclipse and every shadow contact for lunar eclipses.
+///
+/// Greatest eclipse is the minimum geocentric Moon-to-shadow-axis offset
+/// within the caller-selected circumstance span. Contacts are tangencies with
+/// the revision-1 atmosphere-free spherical shadow. The span endpoints must
+/// both lie outside the penumbra, which makes each ingress and egress root
+/// independently bracketed against greatest eclipse.
+pub fn lunar_eclipse_circumstances<P>(
+    provider: &P,
+    search: LunarEclipseSearch,
+) -> Result<Vec<LunarEclipseCircumstances>, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let phases = ecliptic_longitude_lunar_phases(provider, search.phase_window)?;
+    let mut events = Vec::new();
+
+    for phase in phases {
+        if phase.phase != LunarPhase::FullMoon {
+            continue;
+        }
+        let phase_epoch = phase.interval.midpoint();
+        let half_span = search.circumstance_span_days / 2.0;
+        let start = phase_epoch
+            .offset_days(-half_span)
+            .expect("validated phase and span produce a finite start");
+        let end = phase_epoch
+            .offset_days(half_span)
+            .expect("validated phase and span produce a finite end");
+        let greatest_interval =
+            refine_lunar_eclipse_minimum(provider, start, end, search.phase_window.tolerance_days)?;
+        let greatest_epoch = greatest_interval.midpoint();
+        let greatest = lunar_shadow_geometry_at(provider, greatest_epoch)?;
+        let kind = match lunar_eclipse_kind(greatest) {
+            Some(kind) => kind,
+            None => continue,
+        };
+        let start_geometry = lunar_shadow_geometry_at(provider, start)?;
+        let end_geometry = lunar_shadow_geometry_at(provider, end)?;
+        if lunar_contact_value(start_geometry, LunarContactBoundary::Penumbral) <= 0.0
+            || lunar_contact_value(end_geometry, LunarContactBoundary::Penumbral) <= 0.0
+        {
+            return Err(EventError::CircumstanceSpanTooShort {
+                phase_epoch,
+                span_days: search.circumstance_span_days,
+            });
+        }
+
+        let mut contacts: Vec<LunarEclipseContact> = Vec::new();
+        push_lunar_contact_pair(
+            provider,
+            start,
+            greatest_epoch,
+            end,
+            greatest,
+            LunarContactBoundary::Penumbral,
+            LunarEclipseContactKind::PenumbralIngress,
+            LunarEclipseContactKind::PenumbralEgress,
+            search.phase_window.tolerance_days,
+            &mut contacts,
+        )?;
+        if kind == LunarEclipseKind::Partial || kind == LunarEclipseKind::Total {
+            push_lunar_contact_pair(
+                provider,
+                start,
+                greatest_epoch,
+                end,
+                greatest,
+                LunarContactBoundary::Umbral,
+                LunarEclipseContactKind::UmbralIngress,
+                LunarEclipseContactKind::UmbralEgress,
+                search.phase_window.tolerance_days,
+                &mut contacts,
+            )?;
+        }
+        if kind == LunarEclipseKind::Total {
+            push_lunar_contact_pair(
+                provider,
+                start,
+                greatest_epoch,
+                end,
+                greatest,
+                LunarContactBoundary::Total,
+                LunarEclipseContactKind::TotalityBegins,
+                LunarEclipseContactKind::TotalityEnds,
+                search.phase_window.tolerance_days,
+                &mut contacts,
+            )?;
+        }
+        contacts.sort_by(|first, second| {
+            first
+                .interval
+                .midpoint()
+                .day()
+                .partial_cmp(&second.interval.midpoint().day())
+                .expect("contact epochs are finite")
+        });
+
+        events.push(LunarEclipseCircumstances {
+            kind,
+            phase_interval: phase.interval,
+            greatest_interval,
+            greatest_geometry: greatest.public,
+            contacts,
+            circumstance_span_days: search.circumstance_span_days,
+            geometry_model: SPHERICAL_ECLIPSE_GEOMETRY,
+            provider_model: provider.model(),
+            provider_snapshot: provider.data_snapshot().map(str::to_owned),
+        });
+    }
+
+    Ok(events)
 }
 
 /// Find every reversal of apparent ecliptic-longitude motion in a TT window.
@@ -1041,6 +1406,46 @@ where
     P: GeocentricPositionProvider,
 {
     let epoch = interval.midpoint();
+    let geometry = lunar_shadow_geometry_from_states(epoch, moon, sun)?;
+    let kind = match lunar_eclipse_kind(geometry) {
+        Some(LunarEclipseKind::Penumbral) => EclipseCandidateKind::PenumbralLunar,
+        Some(LunarEclipseKind::Partial) => EclipseCandidateKind::PartialLunar,
+        Some(LunarEclipseKind::Total) => EclipseCandidateKind::TotalLunar,
+        None => return Ok(None),
+    };
+
+    Ok(Some(EclipseCandidate {
+        kind,
+        interval,
+        geometry: EclipseCandidateGeometry::Lunar {
+            shadow_axis_separation: geometry.public.shadow_axis_separation,
+            moon_angular_radius: geometry.public.moon_angular_radius,
+            umbra_angular_radius: geometry.public.umbra_angular_radius,
+            penumbra_angular_radius: geometry.public.penumbra_angular_radius,
+        },
+        geometry_model: SPHERICAL_ECLIPSE_GEOMETRY,
+        provider_model: provider.model(),
+        provider_snapshot: provider.data_snapshot().map(str::to_owned),
+    }))
+}
+
+fn lunar_shadow_geometry_at<P>(
+    provider: &P,
+    epoch: JulianDate<TerrestrialTime>,
+) -> Result<LunarShadowGeometry, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let moon = provider_position(provider, ApparentBody::Moon, epoch)?;
+    let sun = provider_position(provider, ApparentBody::Sun, epoch)?;
+    lunar_shadow_geometry_from_states(epoch, moon, sun)
+}
+
+fn lunar_shadow_geometry_from_states<E>(
+    epoch: JulianDate<TerrestrialTime>,
+    moon: State<TrueEclipticEquinoxOfDate>,
+    sun: State<TrueEclipticEquinoxOfDate>,
+) -> Result<LunarShadowGeometry, EventError<E>> {
     let moon_distance = eclipse_distance(
         ApparentBody::Moon,
         epoch,
@@ -1075,29 +1480,151 @@ where
     let penumbra_angular_radius = Angle::from_radians(penumbra_radius_km.atan2(axial_distance_km))
         .expect("validated distances produce a finite penumbra radius");
 
-    let kind = if shadow_axis_offset_km + MEAN_LUNAR_RADIUS_KM <= umbra_radius_km {
-        EclipseCandidateKind::TotalLunar
-    } else if shadow_axis_offset_km <= umbra_radius_km + MEAN_LUNAR_RADIUS_KM {
-        EclipseCandidateKind::PartialLunar
-    } else if shadow_axis_offset_km <= penumbra_radius_km + MEAN_LUNAR_RADIUS_KM {
-        EclipseCandidateKind::PenumbralLunar
-    } else {
-        return Ok(None);
-    };
-
-    Ok(Some(EclipseCandidate {
-        kind,
-        interval,
-        geometry: EclipseCandidateGeometry::Lunar {
+    Ok(LunarShadowGeometry {
+        public: LunarEclipseGeometry {
             shadow_axis_separation,
+            shadow_axis_offset: Distance::from_kilometers(shadow_axis_offset_km)
+                .expect("a finite transverse offset is a distance"),
             moon_angular_radius,
             umbra_angular_radius,
+            umbra_radius: Distance::from_kilometers(umbra_radius_km.max(0.0))
+                .expect("a finite shadow radius is a distance"),
             penumbra_angular_radius,
+            penumbra_radius: Distance::from_kilometers(penumbra_radius_km)
+                .expect("a finite shadow radius is a distance"),
         },
-        geometry_model: SPHERICAL_ECLIPSE_GEOMETRY,
-        provider_model: provider.model(),
-        provider_snapshot: provider.data_snapshot().map(str::to_owned),
-    }))
+        shadow_axis_offset_km,
+        umbra_radius_km,
+        penumbra_radius_km,
+    })
+}
+
+fn lunar_eclipse_kind(geometry: LunarShadowGeometry) -> Option<LunarEclipseKind> {
+    if geometry.shadow_axis_offset_km + MEAN_LUNAR_RADIUS_KM <= geometry.umbra_radius_km {
+        Some(LunarEclipseKind::Total)
+    } else if geometry.shadow_axis_offset_km <= geometry.umbra_radius_km + MEAN_LUNAR_RADIUS_KM {
+        Some(LunarEclipseKind::Partial)
+    } else if geometry.shadow_axis_offset_km <= geometry.penumbra_radius_km + MEAN_LUNAR_RADIUS_KM {
+        Some(LunarEclipseKind::Penumbral)
+    } else {
+        None
+    }
+}
+
+fn lunar_contact_value(geometry: LunarShadowGeometry, boundary: LunarContactBoundary) -> f64 {
+    match boundary {
+        LunarContactBoundary::Penumbral => {
+            geometry.shadow_axis_offset_km - geometry.penumbra_radius_km - MEAN_LUNAR_RADIUS_KM
+        }
+        LunarContactBoundary::Umbral => {
+            geometry.shadow_axis_offset_km - geometry.umbra_radius_km - MEAN_LUNAR_RADIUS_KM
+        }
+        LunarContactBoundary::Total => {
+            geometry.shadow_axis_offset_km + MEAN_LUNAR_RADIUS_KM - geometry.umbra_radius_km
+        }
+    }
+}
+
+fn refine_lunar_eclipse_minimum<P>(
+    provider: &P,
+    mut left: JulianDate<TerrestrialTime>,
+    mut right: JulianDate<TerrestrialTime>,
+    tolerance_days: f64,
+) -> Result<EventInterval, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    while right.day() - left.day() > tolerance_days {
+        let third = (right.day() - left.day()) / 3.0;
+        let first = left
+            .offset_days(third)
+            .expect("a finite minimum bracket has a finite interior point");
+        let second = right
+            .offset_days(-third)
+            .expect("a finite minimum bracket has a finite interior point");
+        let first_offset = lunar_shadow_geometry_at(provider, first)?.shadow_axis_offset_km;
+        let second_offset = lunar_shadow_geometry_at(provider, second)?.shadow_axis_offset_km;
+        if first_offset <= second_offset {
+            right = second;
+        } else {
+            left = first;
+        }
+    }
+    Ok(EventInterval {
+        start: left,
+        end: right,
+    })
+}
+
+fn push_lunar_contact_pair<P>(
+    provider: &P,
+    start: JulianDate<TerrestrialTime>,
+    greatest_epoch: JulianDate<TerrestrialTime>,
+    end: JulianDate<TerrestrialTime>,
+    greatest: LunarShadowGeometry,
+    boundary: LunarContactBoundary,
+    ingress_kind: LunarEclipseContactKind,
+    egress_kind: LunarEclipseContactKind,
+    tolerance_days: f64,
+    contacts: &mut Vec<LunarEclipseContact>,
+) -> Result<(), EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    if lunar_contact_value(greatest, boundary) > 0.0 {
+        return Ok(());
+    }
+    let ingress = refine_lunar_contact(provider, start, greatest_epoch, boundary, tolerance_days)?;
+    let egress = refine_lunar_contact(provider, greatest_epoch, end, boundary, tolerance_days)?;
+    contacts.push(LunarEclipseContact {
+        kind: ingress_kind,
+        interval: ingress,
+    });
+    contacts.push(LunarEclipseContact {
+        kind: egress_kind,
+        interval: egress,
+    });
+    Ok(())
+}
+
+fn refine_lunar_contact<P>(
+    provider: &P,
+    mut left: JulianDate<TerrestrialTime>,
+    mut right: JulianDate<TerrestrialTime>,
+    boundary: LunarContactBoundary,
+    tolerance_days: f64,
+) -> Result<EventInterval, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let mut left_value = lunar_contact_value(lunar_shadow_geometry_at(provider, left)?, boundary);
+    let right_value = lunar_contact_value(lunar_shadow_geometry_at(provider, right)?, boundary);
+    debug_assert!(
+        left_value == 0.0 || right_value == 0.0 || left_value.signum() != right_value.signum()
+    );
+    while right.day() - left.day() > tolerance_days {
+        let midpoint = JulianDate::from_julian_day((left.day() + right.day()) / 2.0)
+            .expect("a finite contact bracket has a finite midpoint");
+        let middle_value =
+            lunar_contact_value(lunar_shadow_geometry_at(provider, midpoint)?, boundary);
+        if left_value == 0.0 {
+            right = left;
+            break;
+        } else if middle_value == 0.0 {
+            left = midpoint;
+            right = midpoint;
+            break;
+        } else if left_value.signum() == middle_value.signum() {
+            left = midpoint;
+            left_value = middle_value;
+        } else {
+            right = midpoint;
+        }
+    }
+    Ok(EventInterval {
+        start: left,
+        end: right,
+    })
 }
 
 fn eclipse_distance<E>(

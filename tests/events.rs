@@ -6,9 +6,11 @@ extern crate turquet;
 use turquet::apparent::{ApparentBody, ANALYTICAL_APPARENT};
 use turquet::events::{
     eclipse_candidates, ecliptic_longitude_conjunctions, ecliptic_longitude_lunar_phases,
-    ecliptic_longitude_stations, EclipseCandidateGeometry, EclipseCandidateKind, EventError,
-    LongitudeMotion, LunarPhase, SearchWindow, SearchWindowError, StationSearch,
-    StationSearchError, MAX_CONJUNCTION_STEP_DAYS, MAX_STATION_VELOCITY_SPAN_DAYS,
+    ecliptic_longitude_stations, lunar_eclipse_circumstances, EclipseCandidateGeometry,
+    EclipseCandidateKind, EventError, LongitudeMotion, LunarEclipseContactKind, LunarEclipseKind,
+    LunarEclipseSearch, LunarEclipseSearchError, LunarPhase, SearchWindow, SearchWindowError,
+    StationSearch, StationSearchError, MAX_CONJUNCTION_STEP_DAYS,
+    MAX_LUNAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS, MAX_STATION_VELOCITY_SPAN_DAYS,
     SPHERICAL_ECLIPSE_GEOMETRY,
 };
 use turquet::foundation::{
@@ -21,6 +23,8 @@ const VECTORS: &str = include_str!("vectors/eclipse_conjunction_horizons.tsv");
 const STATION_VECTORS: &str = include_str!("vectors/mercury_station_horizons.tsv");
 const PHASE_VECTORS: &str = include_str!("vectors/lunar_phases_horizons.tsv");
 const ECLIPSE_GEOMETRY_VECTORS: &str = include_str!("vectors/eclipse_geometry_horizons.tsv");
+const LUNAR_ECLIPSE_CIRCUMSTANCE_VECTORS: &str =
+    include_str!("vectors/lunar_eclipse_circumstances_horizons.tsv");
 const HORIZONS_FIXTURE: Model = Model::new("NASA/JPL Horizons DE441 fixture", "2026-08-23");
 
 #[test]
@@ -57,6 +61,29 @@ fn station_search_rejects_unsafe_velocity_spans() {
     assert_eq!(
         StationSearch::new(window, MAX_STATION_VELOCITY_SPAN_DAYS + 0.1),
         Err(StationSearchError::VelocitySpanTooLarge)
+    );
+}
+
+#[test]
+fn lunar_eclipse_search_rejects_unsafe_spans() {
+    let start = tt_from_utc(2024, 3, 25, 6, 50, 0.0);
+    let end = tt_from_utc(2024, 3, 25, 7, 10, 0.0);
+    let window = SearchWindow::new(start, end, 10.0 / 1_440.0, 1.0 / 86_400.0).unwrap();
+    assert_eq!(
+        LunarEclipseSearch::new(window, f64::NAN),
+        Err(LunarEclipseSearchError::SpanNotFinite)
+    );
+    assert_eq!(
+        LunarEclipseSearch::new(window, 0.0),
+        Err(LunarEclipseSearchError::SpanNotPositive)
+    );
+    assert_eq!(
+        LunarEclipseSearch::new(window, MAX_LUNAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS + 0.1),
+        Err(LunarEclipseSearchError::SpanTooLarge)
+    );
+    assert_eq!(
+        LunarEclipseSearch::new(window, 1.0 / 86_400.0),
+        Err(LunarEclipseSearchError::ToleranceExceedsHalfSpan)
     );
 }
 
@@ -325,6 +352,216 @@ fn eclipse_candidates_match_horizons_geometry_and_nasa_classes() {
 }
 
 #[test]
+fn lunar_eclipse_circumstances_match_horizons_and_nasa() {
+    let cases = [
+        (
+            (2024, 3, 25, 7, 0, 14.6),
+            (2024, 3, 25, 7, 12, 45.2),
+            0.25,
+            LunarEclipseKind::Penumbral,
+            vec![
+                (
+                    LunarEclipseContactKind::PenumbralIngress,
+                    (2024, 3, 25, 4, 53, 11.0),
+                ),
+                (
+                    LunarEclipseContactKind::PenumbralEgress,
+                    (2024, 3, 25, 9, 32, 18.0),
+                ),
+            ],
+        ),
+        (
+            (2024, 9, 18, 2, 34, 22.9),
+            (2024, 9, 18, 2, 44, 10.5),
+            0.2,
+            LunarEclipseKind::Partial,
+            vec![
+                (
+                    LunarEclipseContactKind::PenumbralIngress,
+                    (2024, 9, 18, 0, 41, 2.0),
+                ),
+                (
+                    LunarEclipseContactKind::UmbralIngress,
+                    (2024, 9, 18, 2, 12, 48.0),
+                ),
+                (
+                    LunarEclipseContactKind::UmbralEgress,
+                    (2024, 9, 18, 3, 15, 35.0),
+                ),
+                (
+                    LunarEclipseContactKind::PenumbralEgress,
+                    (2024, 9, 18, 4, 47, 18.0),
+                ),
+            ],
+        ),
+        (
+            (2025, 3, 14, 6, 54, 33.5),
+            (2025, 3, 14, 6, 58, 41.7),
+            0.3,
+            LunarEclipseKind::Total,
+            vec![
+                (
+                    LunarEclipseContactKind::PenumbralIngress,
+                    (2025, 3, 14, 3, 57, 24.0),
+                ),
+                (
+                    LunarEclipseContactKind::UmbralIngress,
+                    (2025, 3, 14, 5, 9, 33.0),
+                ),
+                (
+                    LunarEclipseContactKind::TotalityBegins,
+                    (2025, 3, 14, 6, 25, 59.0),
+                ),
+                (
+                    LunarEclipseContactKind::TotalityEnds,
+                    (2025, 3, 14, 7, 31, 23.0),
+                ),
+                (
+                    LunarEclipseContactKind::UmbralEgress,
+                    (2025, 3, 14, 8, 47, 48.0),
+                ),
+                (
+                    LunarEclipseContactKind::PenumbralEgress,
+                    (2025, 3, 14, 10, 0, 1.0),
+                ),
+            ],
+        ),
+    ];
+    let fixture = HorizonsFixtureProvider::lunar_eclipse_circumstances();
+
+    for &(phase_parts, greatest_parts, span_days, expected_kind, ref nasa_contacts) in &cases {
+        let phase_reference = tt_from_parts(phase_parts);
+        let greatest_reference = tt_from_parts(greatest_parts);
+        let phase_window = SearchWindow::new(
+            phase_reference.offset_days(-10.0 / 1_440.0).unwrap(),
+            phase_reference.offset_days(10.0 / 1_440.0).unwrap(),
+            10.0 / 1_440.0,
+            1.0 / 86_400.0,
+        )
+        .unwrap();
+        let search = LunarEclipseSearch::new(phase_window, span_days).unwrap();
+        let fixture_events = lunar_eclipse_circumstances(&fixture, search)
+            .expect("fixture circumstance search succeeds");
+        let analytical_events = lunar_eclipse_circumstances(&AnalyticalEphemeris, search)
+            .expect("analytical circumstance search succeeds");
+
+        assert_eq!(fixture_events.len(), 1);
+        assert_eq!(analytical_events.len(), 1);
+        let fixture_event = &fixture_events[0];
+        let analytical_event = &analytical_events[0];
+        assert_eq!(fixture_event.kind(), expected_kind);
+        assert_eq!(analytical_event.kind(), expected_kind);
+        assert_eq!(fixture_event.contacts().len(), nasa_contacts.len());
+        assert_eq!(analytical_event.contacts().len(), nasa_contacts.len());
+        assert_eq!(fixture_event.geometry_model(), SPHERICAL_ECLIPSE_GEOMETRY);
+        assert_eq!(
+            analytical_event.geometry_model(),
+            SPHERICAL_ECLIPSE_GEOMETRY
+        );
+        assert_eq!(fixture_event.provider_model(), HORIZONS_FIXTURE);
+        assert_eq!(analytical_event.provider_model(), ANALYTICAL_APPARENT);
+        assert_eq!(
+            fixture_event.provider_snapshot(),
+            Some(
+                "Horizons API 1.2 / DE441 / lunar eclipse circumstance fixture generated 2026-08-24"
+            )
+        );
+        assert_eq!(analytical_event.provider_snapshot(), None);
+        assert_eq!(fixture_event.circumstance_span_days(), span_days);
+        assert_eq!(analytical_event.circumstance_span_days(), span_days);
+        assert!(fixture_event.greatest_interval().width_days() * 86_400.0 <= 1.001);
+        assert!(analytical_event.greatest_interval().width_days() * 86_400.0 <= 1.001);
+        assert!(
+            seconds_apart(
+                fixture_event.greatest_interval().midpoint(),
+                greatest_reference,
+            ) < 20.0
+        );
+        assert!(
+            seconds_apart(
+                analytical_event.greatest_interval().midpoint(),
+                greatest_reference,
+            ) < 30.0
+        );
+        assert!(
+            seconds_apart(
+                fixture_event.greatest_interval().midpoint(),
+                analytical_event.greatest_interval().midpoint(),
+            ) < 15.0
+        );
+        for geometry in &[
+            fixture_event.greatest_geometry(),
+            analytical_event.greatest_geometry(),
+        ] {
+            assert!(geometry.shadow_axis_offset().kilometers() >= 0.0);
+            assert!(geometry.umbra_radius().kilometers() > 0.0);
+            assert!(geometry.penumbra_radius().kilometers() > geometry.umbra_radius().kilometers());
+            assert!(geometry.moon_angular_radius().radians() > 0.0);
+            assert!(geometry.umbra_angular_radius().radians() > 0.0);
+            assert!(geometry.penumbra_angular_radius().radians() > 0.0);
+        }
+        eprintln!(
+            "{:?}: greatest Horizons {:+.3}s from NASA; analytical {:+.3}s; provider delta {:.3}s; axis offsets {:.3}/{:.3} km",
+            expected_kind,
+            signed_seconds(fixture_event.greatest_interval().midpoint(), greatest_reference),
+            signed_seconds(analytical_event.greatest_interval().midpoint(), greatest_reference),
+            seconds_apart(
+                fixture_event.greatest_interval().midpoint(),
+                analytical_event.greatest_interval().midpoint(),
+            ),
+            fixture_event.greatest_geometry().shadow_axis_offset().kilometers(),
+            analytical_event.greatest_geometry().shadow_axis_offset().kilometers(),
+        );
+
+        for (index, &(kind, reference_parts)) in nasa_contacts.iter().enumerate() {
+            let reference = tt_from_parts(reference_parts);
+            let fixture_contact = fixture_event.contacts()[index];
+            let analytical_contact = analytical_event.contacts()[index];
+            assert_eq!(fixture_contact.kind(), kind);
+            assert_eq!(analytical_contact.kind(), kind);
+            assert!(fixture_contact.interval().width_days() * 86_400.0 <= 1.001);
+            assert!(analytical_contact.interval().width_days() * 86_400.0 <= 1.001);
+            assert!(seconds_apart(fixture_contact.interval().midpoint(), reference) < 300.0);
+            assert!(seconds_apart(analytical_contact.interval().midpoint(), reference) < 300.0);
+            assert!(
+                seconds_apart(
+                    fixture_contact.interval().midpoint(),
+                    analytical_contact.interval().midpoint(),
+                ) < 30.0
+            );
+            eprintln!(
+                "{}: Horizons {:+.3}s from NASA; analytical {:+.3}s; provider delta {:.3}s",
+                kind.abbreviation(),
+                signed_seconds(fixture_contact.interval().midpoint(), reference),
+                signed_seconds(analytical_contact.interval().midpoint(), reference),
+                seconds_apart(
+                    fixture_contact.interval().midpoint(),
+                    analytical_contact.interval().midpoint(),
+                ),
+            );
+        }
+    }
+}
+
+#[test]
+fn lunar_eclipse_circumstances_require_exterior_span_endpoints() {
+    let fixture = HorizonsFixtureProvider::lunar_eclipse_circumstances();
+    let reference = tt_from_utc(2024, 3, 25, 7, 0, 14.6);
+    let window = SearchWindow::new(
+        reference.offset_days(-10.0 / 1_440.0).unwrap(),
+        reference.offset_days(10.0 / 1_440.0).unwrap(),
+        10.0 / 1_440.0,
+        1.0 / 86_400.0,
+    )
+    .unwrap();
+    let search = LunarEclipseSearch::new(window, 0.05).unwrap();
+    assert!(matches!(
+        lunar_eclipse_circumstances(&fixture, search),
+        Err(EventError::CircumstanceSpanTooShort { .. })
+    ));
+}
+
+#[test]
 fn lunar_phase_sequence_crosses_the_longitude_wrap() {
     let start = JulianDate::<TerrestrialTime>::from_julian_day(2_451_545.0).unwrap();
     let end = start.offset_days(1.0).unwrap();
@@ -548,6 +785,20 @@ impl HorizonsFixtureProvider {
         )
     }
 
+    fn lunar_eclipse_circumstances() -> Self {
+        Self::from_vectors(
+            LUNAR_ECLIPSE_CIRCUMSTANCE_VECTORS,
+            162,
+            &[
+                "oracle: NASA/JPL Horizons API 1.2, DE441",
+                "fifteen-minute Sun and Moon states",
+                "NASA Danjon shadow enlargement",
+                "fetch_horizons_lunar_eclipse_circumstances.ps1",
+            ],
+            "Horizons API 1.2 / DE441 / lunar eclipse circumstance fixture generated 2026-08-24",
+        )
+    }
+
     fn from_vectors(
         vectors: &str,
         expected_rows: usize,
@@ -758,6 +1009,10 @@ fn tt_from_utc(
     JulianDate::from_epoch(ScaleAwareEpoch::from_gregorian_utc(
         year, month, day, hour, minute, whole, nanos,
     ))
+}
+
+fn tt_from_parts(parts: (i32, u8, u8, u8, u8, f64)) -> JulianDate<TerrestrialTime> {
+    tt_from_utc(parts.0, parts.1, parts.2, parts.3, parts.4, parts.5)
 }
 
 fn seconds_apart(first: JulianDate<TerrestrialTime>, second: JulianDate<TerrestrialTime>) -> f64 {
