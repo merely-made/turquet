@@ -129,8 +129,15 @@ seconds, while the analytical result is 8.571 seconds from NASA's published
 ecliptic conjunction. See
 `receipts/2026-08-23_t4a_conjunction_search.md`.
 
-T4 remains open for station roots, phases, eclipse geometry, rise/set,
-visibility, extrema, and event execution over a live kernel-backed verifier.
+**Second slice completed 2026-08-23.** `events` now finds sign-changing roots
+of apparent ecliptic-longitude speed. The caller selects the central-difference
+span, and results state the motion before and after the bounded root. The
+2024-04-25 Mercury direct station agrees within 0.659 seconds between the
+analytical engine and an hourly DE441/Horizons fixture. See
+`receipts/2026-08-23_t4b_station_search.md`.
+
+T4 remains open for phases, eclipse geometry, rise/set, visibility, extrema,
+and event execution over a live kernel-backed verifier.
 
 ## T5: Consumers and embedding
 

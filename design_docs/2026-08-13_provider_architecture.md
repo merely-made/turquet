@@ -34,7 +34,7 @@ Status of the analysis' seven steps at the time of writing:
 | --- | --- |
 | 1. Fork astro-rust as the maintained repository | Done: Turquet is that repository, one crate, history preserved |
 | 2. Typed calculation core | Partial: time scales come from hifitime (`jde_tt_frm_epoch`, `Epoch` re-exported); typed angles, distances, frames, and observers remain open |
-| 3. Analytical body provider | Done at chart precision for ten bodies (light-time, aberration, nutation, Pluto range, retrograde); open: deflection, FK5/ICRS, IAU 2006/2000A, equatorial output, stations |
+| 3. Analytical body provider | Done at chart precision for ten bodies: light-time, solar deflection, aberration, IAU 2006/2000A orientation, Pluto range, typed equatorial output, and provider-neutral station roots |
 | 4. Event algorithms over a position provider | Open: the architecture below fixes the shape; `verify_cohort` is the first consumer of the two-lane split |
 | 5. ANISE out of the shipped graph | **Done**: the verifier lane lives here behind the opt-in `verify` feature; Cleromancy dropped its `ephemeris` feature and the anise, sha2, sofars, and ureq dependencies |
 | 6. Broad evidence | Date cohort **done** (112,137 samples, 1885-2099, worst 5 millidegrees; `receipts/2026-08-13_t3_cohort_de440s.md`); observer cohort and targeted cases open |
@@ -140,3 +140,12 @@ its first forcing consumer. Ordinary CI supplies the second implementation
 through committed Horizons vectors, so the shared algorithm is executable
 without a kernel. Live-kernel event execution and the remaining event
 families are still T4 work.
+
+## T4b addendum: 2026-08-23
+
+Stationary points are now roots of provider-supplied apparent
+ecliptic-longitude motion rather than classifications inside the analytical
+engine. The velocity-difference span is explicit and retained in the result,
+along with the direction on each side of the root. A committed hourly
+Horizons provider and the analytical provider locate the 2024-04-25 Mercury
+direct station with a 0.659-second difference.
