@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.8.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.8.1 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -141,3 +141,12 @@ retaining the measured systematic offset from NASA contact times.
 When the opt-in `JplVerifier` reads a caller-supplied SPK kernel, it computes
 the file's SHA-256 and carries that runtime snapshot into event results. The
 digest records identity; it is not an allowlist or an accuracy claim.
+
+The 2026-08-24 live event receipt used NASA/JPL NAIF's generic planetary
+`de440s.bsp` with SHA-256
+`c1c7feeab882263fc493a9d5a5b2ddd71b54826cdf65d8d17a76126b260a49f2`.
+The kernel index is
+<https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/>. It was read
+through ANISE revision `71e973a245e6701e14a5d4c88a3c4e7dedbf7702` by
+`verify_events`; it is caller-owned verification data and is not distributed,
+downloaded, or required by Turquet's default graph or CI.

@@ -23,10 +23,9 @@ This is the canonical index for active documents in `design_docs/`.
 - [DOC_POLICY.md](DOC_POLICY.md): shared documentation rules and Turquet's
   local addendum.
 - [2026-08-13_provider_architecture.md](2026-08-13_provider_architecture.md):
-  provider boundary, verification doctrine, and landed T2 through T4e
+  provider boundary, verification doctrine, and landed T2 through live T4
   addenda.
-
-The completed T4e implementation plan is archived under
+The completed T4e and live-kernel verification plans are archived under
 `archive_docs/2026-08-24/`. Remaining event gates are canonical in
 `ROADMAP.md`.
 

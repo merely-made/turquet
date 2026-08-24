@@ -9,7 +9,8 @@
 //! committed as vectors so ordinary builds and CI never touch a kernel.
 //!
 //! ```text
-//! cargo run --release --features verify --bin verify_cohort -- //!     <kernel.bsp> [step_days] [--emit <path>] [--emit-step <days>]
+//! cargo run --release --features verify --bin verify_cohort -- \
+//!     <kernel.bsp> [step_days] [--emit <path>] [--emit-step <days>]
 //! ```
 //!
 //! `--emit` writes a committed vector file holding the **oracle's** values,
@@ -40,6 +41,16 @@ const DEFAULT_EMIT_STEP_DAYS: f64 = 149.0;
 const ANISE_REVISION: &str = "71e973a245e6701e14a5d4c88a3c4e7dedbf7702";
 
 fn main() {
+    std::thread::Builder::new()
+        .name("turquet-cohort-verifier".to_string())
+        .stack_size(32 * 1024 * 1024)
+        .spawn(run)
+        .expect("could not start verifier worker")
+        .join()
+        .expect("verifier worker panicked");
+}
+
+fn run() {
     let arguments = std::env::args().skip(1).collect::<Vec<_>>();
     let positional = arguments
         .iter()

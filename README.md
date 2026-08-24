@@ -14,7 +14,7 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.8.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.8.1` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
@@ -71,7 +71,8 @@ possible after observer parallax; local type and visibility are not inferred.
 Lunar searches refine greatest eclipse and the P1/P4, U1/U4, and U2/U3
 contacts appropriate to penumbral, partial, and total events. These contacts
 use Turquet's atmosphere-free spherical shadow. Every algorithm is exercised
-with the analytical engine and committed NASA/JPL Horizons facts.
+with the analytical engine, committed NASA/JPL Horizons facts, and a live
+caller-supplied JPL SPK kernel through the opt-in verifier.
 
 ## Direction
 
@@ -147,6 +148,17 @@ Turquet will use independent authorities according to the calculation:
 
 JPL kernels and external implementations are verification inputs. The default
 engine remains Rust-only and usable without a runtime kernel download.
+
+Maintainers can execute every landed event family through a caller-owned SPK
+kernel and compare it with the analytical provider:
+
+```text
+cargo run --features verify --bin verify_events -- <kernel.bsp>
+```
+
+The command prints the provider revision and kernel SHA-256 and fails on a
+partial cohort, class/contact disagreement, wide result interval, or exceeded
+measured provider-difference gate.
 
 ## License
 

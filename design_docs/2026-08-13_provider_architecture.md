@@ -186,3 +186,21 @@ the provider model and runtime snapshot. The same solver runs over analytical
 states and committed Horizons facts. Contacts remain atmosphere-free and
 geocentric. Observer-relative solar contacts, local eclipse type, visibility,
 atmospheric enlargement, oblateness, and terrain remain separate contracts.
+
+## T4 live-verifier addendum: 2026-08-24
+
+`verify_events` now forces every landed provider-neutral event family through
+a live `JplVerifier` backed by a caller-supplied SPK kernel. The command treats
+missing results, event-class or contact-order disagreement, result intervals
+wider than the selected tolerance, and provider differences outside the
+measured gate as failures. It prints the ANISE-backed model revision and the
+kernel SHA-256 retained by the provider.
+
+The official DE440s cohort compared 26 paired results across conjunctions, a
+station, all four lunar phases, positive and negative eclipse candidates, and
+penumbral, partial, and total lunar circumstances. Worst measured differences
+were 12.891 seconds for roots, 0.659 seconds for the station, 8.537 seconds for
+greatest eclipse, and 22.455 seconds for contacts. This closes live verifier
+execution for the event families already present. It does not supply the
+epoch-indexed Earth orientation and provider-neutral topocentric transform
+required by observer-relative contacts or altitude crossings.

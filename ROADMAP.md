@@ -73,6 +73,7 @@ default dependency tree contains `hifitime` for scale-aware epochs and
 
 ```text
 cargo run --features verify --bin verify_cohort -- <kernel.bsp> [step_days]
+cargo run --features verify --bin verify_events -- <kernel.bsp>
 ```
 
 ## T3: Analytical ephemeris
@@ -159,9 +160,18 @@ partial, and total eclipses, analytical and DE441/Horizons providers agree
 within 8.708 seconds at greatest eclipse and 22.595 seconds at contacts. See
 `receipts/2026-08-24_t4e_lunar_eclipse_circumstances.md`.
 
+**Live-verifier gate completed 2026-08-24.** `verify_events` executes every
+landed event family through both `AnalyticalEphemeris` and `JplVerifier` using
+a caller-supplied SPK kernel. The official DE440s run compared 26 paired event
+results. Measured worst differences were 12.891 seconds for event roots, 0.659
+seconds for the Mercury station, 8.537 seconds for greatest eclipse, and
+22.455 seconds for lunar contacts. Every interval remained at most one second
+wide and both providers agreed on event classes and contact order. The kernel
+stays outside the repository and ordinary CI. See
+`receipts/2026-08-24_t4_live_kernel_events.md`.
+
 T4 remains open for observer-relative solar contacts and eclipse visibility,
-rise/set, general visibility, illuminated-fraction and distance extrema, and
-event execution over a live kernel-backed verifier.
+rise/set, general visibility, and illuminated-fraction and distance extrema.
 
 ## T5: Consumers and embedding
 
