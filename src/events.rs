@@ -4,8 +4,8 @@
 //! Provider-neutral celestial event searches.
 //!
 //! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
-//! stationary points, and lunar quarter phases. Every result is a bounded TT
-//! interval, not an isolated floating-point instant.
+//! stationary points, lunar quarter phases, and eclipse candidates. Every
+//! result is a bounded TT interval, not an isolated floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
@@ -31,6 +31,23 @@ pub const MAX_CONJUNCTION_STEP_DAYS: f64 = MAX_EVENT_STEP_DAYS;
 
 /// Maximum full interval accepted for a station's central-difference speed.
 pub const MAX_STATION_VELOCITY_SPAN_DAYS: f64 = 1.0;
+
+/// IAU 2015 nominal solar radius used by the eclipse geometry model.
+pub const NOMINAL_SOLAR_RADIUS_KM: f64 = 695_700.0;
+
+/// WGS84 equatorial Earth radius used by the eclipse geometry model.
+pub const WGS84_EARTH_EQUATORIAL_RADIUS_KM: f64 = 6_378.137;
+
+/// Mean lunar radius used by the eclipse geometry model.
+pub const MEAN_LUNAR_RADIUS_KM: f64 = 1_737.4;
+
+/// Atmosphere-free spherical eclipse candidate geometry.
+///
+/// Revision 1 uses the radii exposed above. It deliberately omits atmospheric
+/// enlargement of the terrestrial shadow, Earth oblateness, local contacts,
+/// and terrain.
+pub const SPHERICAL_ECLIPSE_GEOMETRY: Model =
+    Model::new("atmosphere-free spherical eclipse candidate geometry", "1");
 
 /// Validated numerical controls for an event search.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -356,9 +373,86 @@ impl LunarPhaseEvent {
     }
 }
 
+/// The geometric class of an eclipse candidate.
+///
+/// `Solar` is intentionally not split into partial, annular, or total: that
+/// classification requires a topocentric observer or a solved path across the
+/// Earth. Lunar classes are geocentric intersections with the spherical Earth
+/// shadow at the lunar phase midpoint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EclipseCandidateKind {
+    Solar,
+    PenumbralLunar,
+    PartialLunar,
+    TotalLunar,
+}
+
+/// Angular facts used to accept and classify an eclipse candidate.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EclipseCandidateGeometry {
+    Solar {
+        /// Geocentric great-circle separation of the Sun and Moon centers.
+        center_separation: Angle,
+        sun_angular_radius: Angle,
+        moon_angular_radius: Angle,
+        /// Conservative sum of solar and lunar horizontal parallax.
+        observer_parallax_allowance: Angle,
+    },
+    Lunar {
+        /// Great-circle separation of the Moon center from the antisolar axis.
+        shadow_axis_separation: Angle,
+        moon_angular_radius: Angle,
+        umbra_angular_radius: Angle,
+        penumbra_angular_radius: Angle,
+    },
+}
+
+/// A new- or full-moon event whose spherical geometry permits an eclipse.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EclipseCandidate {
+    kind: EclipseCandidateKind,
+    interval: EventInterval,
+    geometry: EclipseCandidateGeometry,
+    geometry_model: Model,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+}
+
+impl EclipseCandidate {
+    pub fn kind(&self) -> EclipseCandidateKind {
+        self.kind
+    }
+
+    pub fn interval(&self) -> EventInterval {
+        self.interval
+    }
+
+    pub fn geometry(&self) -> EclipseCandidateGeometry {
+        self.geometry
+    }
+
+    pub fn geometry_model(&self) -> Model {
+        self.geometry_model
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+}
+
 #[derive(Debug)]
 pub enum EventError<E> {
     SameBody,
+    DistanceTooSmall {
+        body: ApparentBody,
+        epoch: JulianDate<TerrestrialTime>,
+        distance_km: f64,
+        required_greater_than_km: f64,
+    },
     Position {
         body: ApparentBody,
         epoch: JulianDate<TerrestrialTime>,
@@ -370,6 +464,19 @@ impl<E: fmt::Display> fmt::Display for EventError<E> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             EventError::SameBody => write!(formatter, "a conjunction requires two bodies"),
+            EventError::DistanceTooSmall {
+                body,
+                epoch,
+                distance_km,
+                required_greater_than_km,
+            } => write!(
+                formatter,
+                "{} distance {} km at TT JD {} must exceed {} km for eclipse geometry",
+                body.name(),
+                distance_km,
+                epoch.day(),
+                required_greater_than_km
+            ),
             EventError::Position {
                 body,
                 epoch,
@@ -389,7 +496,7 @@ impl<E: ::std::error::Error + 'static> ::std::error::Error for EventError<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
             EventError::Position { ref source, .. } => Some(source),
-            EventError::SameBody => None,
+            EventError::SameBody | EventError::DistanceTooSmall { .. } => None,
         }
     }
 }
@@ -530,6 +637,43 @@ where
     }
 
     Ok(events)
+}
+
+/// Find new- and full-moon events whose geometry permits an eclipse.
+///
+/// Solar candidates use geocentric disk overlap plus a conservative allowance
+/// for observer parallax. They establish global possibility, not local
+/// visibility or contact times. Lunar candidates compare the Moon with the
+/// atmosphere-free spherical umbra and penumbra at the phase midpoint. The
+/// returned interval is the underlying ecliptic-longitude phase interval.
+pub fn eclipse_candidates<P>(
+    provider: &P,
+    window: SearchWindow,
+) -> Result<Vec<EclipseCandidate>, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let phases = ecliptic_longitude_lunar_phases(provider, window)?;
+    let mut candidates = Vec::new();
+
+    for phase in phases {
+        if phase.phase != LunarPhase::NewMoon && phase.phase != LunarPhase::FullMoon {
+            continue;
+        }
+        let epoch = phase.interval.midpoint();
+        let moon = provider_position(provider, ApparentBody::Moon, epoch)?;
+        let sun = provider_position(provider, ApparentBody::Sun, epoch)?;
+        let candidate = match phase.phase {
+            LunarPhase::NewMoon => solar_eclipse_candidate(provider, phase.interval, moon, sun)?,
+            LunarPhase::FullMoon => lunar_eclipse_candidate(provider, phase.interval, moon, sun)?,
+            LunarPhase::FirstQuarter | LunarPhase::LastQuarter => None,
+        };
+        if let Some(candidate) = candidate {
+            candidates.push(candidate);
+        }
+    }
+
+    Ok(candidates)
 }
 
 /// Find every reversal of apparent ecliptic-longitude motion in a TT window.
@@ -833,4 +977,147 @@ fn angular_separation(
             * (first.longitude().radians() - second.longitude().radians()).cos();
     Angle::from_radians(cosine.max(-1.0).min(1.0).acos())
         .expect("finite directions produce a finite separation")
+}
+
+fn solar_eclipse_candidate<P>(
+    provider: &P,
+    interval: EventInterval,
+    moon: State<TrueEclipticEquinoxOfDate>,
+    sun: State<TrueEclipticEquinoxOfDate>,
+) -> Result<Option<EclipseCandidate>, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let epoch = interval.midpoint();
+    let moon_distance = eclipse_distance(
+        ApparentBody::Moon,
+        epoch,
+        moon.distance().kilometers(),
+        WGS84_EARTH_EQUATORIAL_RADIUS_KM.max(MEAN_LUNAR_RADIUS_KM),
+    )?;
+    let sun_distance = eclipse_distance(
+        ApparentBody::Sun,
+        epoch,
+        sun.distance().kilometers(),
+        NOMINAL_SOLAR_RADIUS_KM,
+    )?;
+    let center_separation = angular_separation(moon, sun);
+    let moon_angular_radius = angular_radius(MEAN_LUNAR_RADIUS_KM, moon_distance);
+    let sun_angular_radius = angular_radius(NOMINAL_SOLAR_RADIUS_KM, sun_distance);
+    let observer_parallax_allowance = Angle::from_radians(
+        (WGS84_EARTH_EQUATORIAL_RADIUS_KM / moon_distance).asin()
+            + (WGS84_EARTH_EQUATORIAL_RADIUS_KM / sun_distance).asin(),
+    )
+    .expect("validated distances produce finite horizontal parallax");
+    let candidate_limit = moon_angular_radius.radians()
+        + sun_angular_radius.radians()
+        + observer_parallax_allowance.radians();
+    if center_separation.radians() > candidate_limit {
+        return Ok(None);
+    }
+
+    Ok(Some(EclipseCandidate {
+        kind: EclipseCandidateKind::Solar,
+        interval,
+        geometry: EclipseCandidateGeometry::Solar {
+            center_separation,
+            sun_angular_radius,
+            moon_angular_radius,
+            observer_parallax_allowance,
+        },
+        geometry_model: SPHERICAL_ECLIPSE_GEOMETRY,
+        provider_model: provider.model(),
+        provider_snapshot: provider.data_snapshot().map(str::to_owned),
+    }))
+}
+
+fn lunar_eclipse_candidate<P>(
+    provider: &P,
+    interval: EventInterval,
+    moon: State<TrueEclipticEquinoxOfDate>,
+    sun: State<TrueEclipticEquinoxOfDate>,
+) -> Result<Option<EclipseCandidate>, EventError<P::Error>>
+where
+    P: GeocentricPositionProvider,
+{
+    let epoch = interval.midpoint();
+    let moon_distance = eclipse_distance(
+        ApparentBody::Moon,
+        epoch,
+        moon.distance().kilometers(),
+        MEAN_LUNAR_RADIUS_KM,
+    )?;
+    let sun_distance = eclipse_distance(
+        ApparentBody::Sun,
+        epoch,
+        sun.distance().kilometers(),
+        NOMINAL_SOLAR_RADIUS_KM,
+    )?;
+    let shadow_axis_separation = Angle::from_radians(
+        (PI - angular_separation(moon, sun).radians())
+            .max(0.0)
+            .min(PI),
+    )
+    .expect("finite directions produce a finite antisolar separation");
+    let moon_angular_radius = angular_radius(MEAN_LUNAR_RADIUS_KM, moon_distance);
+    let axis = shadow_axis_separation.radians();
+    let axial_distance_km = moon_distance * axis.cos();
+    let shadow_axis_offset_km = moon_distance * axis.sin();
+    let umbra_radius_km = WGS84_EARTH_EQUATORIAL_RADIUS_KM
+        - axial_distance_km * (NOMINAL_SOLAR_RADIUS_KM - WGS84_EARTH_EQUATORIAL_RADIUS_KM)
+            / sun_distance;
+    let penumbra_radius_km = WGS84_EARTH_EQUATORIAL_RADIUS_KM
+        + axial_distance_km * (NOMINAL_SOLAR_RADIUS_KM + WGS84_EARTH_EQUATORIAL_RADIUS_KM)
+            / sun_distance;
+    let umbra_angular_radius =
+        Angle::from_radians(umbra_radius_km.max(0.0).atan2(axial_distance_km))
+            .expect("validated distances produce a finite umbra radius");
+    let penumbra_angular_radius = Angle::from_radians(penumbra_radius_km.atan2(axial_distance_km))
+        .expect("validated distances produce a finite penumbra radius");
+
+    let kind = if shadow_axis_offset_km + MEAN_LUNAR_RADIUS_KM <= umbra_radius_km {
+        EclipseCandidateKind::TotalLunar
+    } else if shadow_axis_offset_km <= umbra_radius_km + MEAN_LUNAR_RADIUS_KM {
+        EclipseCandidateKind::PartialLunar
+    } else if shadow_axis_offset_km <= penumbra_radius_km + MEAN_LUNAR_RADIUS_KM {
+        EclipseCandidateKind::PenumbralLunar
+    } else {
+        return Ok(None);
+    };
+
+    Ok(Some(EclipseCandidate {
+        kind,
+        interval,
+        geometry: EclipseCandidateGeometry::Lunar {
+            shadow_axis_separation,
+            moon_angular_radius,
+            umbra_angular_radius,
+            penumbra_angular_radius,
+        },
+        geometry_model: SPHERICAL_ECLIPSE_GEOMETRY,
+        provider_model: provider.model(),
+        provider_snapshot: provider.data_snapshot().map(str::to_owned),
+    }))
+}
+
+fn eclipse_distance<E>(
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    distance_km: f64,
+    required_greater_than_km: f64,
+) -> Result<f64, EventError<E>> {
+    if distance_km <= required_greater_than_km {
+        return Err(EventError::DistanceTooSmall {
+            body,
+            epoch,
+            distance_km,
+            required_greater_than_km,
+        });
+    }
+    Ok(distance_km)
+}
+
+fn angular_radius(radius_km: f64, distance_km: f64) -> Angle {
+    Angle::from_radians((radius_km / distance_km).asin())
+        .expect("validated radii and distances produce a finite angular radius")
 }

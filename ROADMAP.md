@@ -143,9 +143,17 @@ and Horizons providers against NASA GSFC's minute-resolution phase catalogue;
 the measured worst provider difference is 5.273 seconds. See
 `receipts/2026-08-23_t4c_lunar_phases.md`.
 
-T4 remains open for eclipse geometry, rise/set, visibility, illuminated-
-fraction and distance extrema, and event execution over a live kernel-backed
-verifier.
+**Fourth slice completed 2026-08-24.** `events` now filters new and full moons
+through named spherical eclipse candidate geometry. Solar candidates include
+a conservative global observer-parallax allowance. Lunar candidates report
+atmosphere-free penumbral, partial, or total shadow intersections. Analytical
+and Horizons providers agree on five NASA-listed eclipses across every lunar
+class and two solar geometries, and reject an ordinary new and full moon. See
+`receipts/2026-08-24_t4d_eclipse_candidates.md`.
+
+T4 remains open for eclipse contacts and observer visibility, rise/set,
+general visibility, illuminated-fraction and distance extrema, and event
+execution over a live kernel-backed verifier.
 
 ## T5: Consumers and embedding
 

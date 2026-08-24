@@ -14,11 +14,11 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.6.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.7.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
-ecliptic-longitude stations, and lunar quarter phases. The original 2015-era
-surface remains under `turquet::compat` for migration.
+ecliptic-longitude stations, lunar quarter phases, and eclipse candidates.
+The original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
 
@@ -60,13 +60,16 @@ also cover an eclipse, a Mercury station bracket, lunar perigee and apogee,
 and a high-latitude site.
 
 The T4 event API uses `GeocentricPositionProvider` for apparent
-ecliptic-longitude conjunctions, stationary points, and lunar quarter phases.
-Search step, time tolerance, and the station velocity-difference span are
-explicit. Results are TT intervals carrying provider model and runtime
-snapshot identity, position failures remain errors, conjunctions and phases
-report great-circle separation, and stations report the motion direction on
-each side. Every algorithm is exercised with the analytical engine and
-committed NASA/JPL Horizons facts.
+ecliptic-longitude conjunctions, stationary points, lunar quarter phases, and
+eclipse candidates. Search step, time tolerance, and the station
+velocity-difference span are explicit. Results are TT intervals carrying
+provider model and runtime snapshot identity. Position failures remain
+errors. Eclipse results also retain a named spherical geometry revision and
+the angular terms that decided the candidate. Solar candidates mean a global
+alignment is possible after observer parallax; local type and visibility are
+not inferred. Lunar candidates are classified as penumbral, partial, or total
+against an atmosphere-free spherical Earth shadow. Every algorithm is
+exercised with the analytical engine and committed NASA/JPL Horizons facts.
 
 ## Direction
 
@@ -127,7 +130,8 @@ policy rather than an implicit correction.
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. T4 still
-has open slices for eclipse geometry, rise/set, visibility, and extrema.
+has open slices for eclipse contacts and local visibility, rise/set, general
+visibility, and extrema.
 
 ## Verification
 

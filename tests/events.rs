@@ -5,9 +5,11 @@ extern crate turquet;
 
 use turquet::apparent::{ApparentBody, ANALYTICAL_APPARENT};
 use turquet::events::{
-    ecliptic_longitude_conjunctions, ecliptic_longitude_lunar_phases, ecliptic_longitude_stations,
-    EventError, LongitudeMotion, LunarPhase, SearchWindow, SearchWindowError, StationSearch,
+    eclipse_candidates, ecliptic_longitude_conjunctions, ecliptic_longitude_lunar_phases,
+    ecliptic_longitude_stations, EclipseCandidateGeometry, EclipseCandidateKind, EventError,
+    LongitudeMotion, LunarPhase, SearchWindow, SearchWindowError, StationSearch,
     StationSearchError, MAX_CONJUNCTION_STEP_DAYS, MAX_STATION_VELOCITY_SPAN_DAYS,
+    SPHERICAL_ECLIPSE_GEOMETRY,
 };
 use turquet::foundation::{
     Direction, Distance, JulianDate, Latitude, Longitude, Model, ScaleAwareEpoch, State,
@@ -18,6 +20,7 @@ use turquet::provider::{AnalyticalEphemeris, GeocentricPositionProvider};
 const VECTORS: &str = include_str!("vectors/eclipse_conjunction_horizons.tsv");
 const STATION_VECTORS: &str = include_str!("vectors/mercury_station_horizons.tsv");
 const PHASE_VECTORS: &str = include_str!("vectors/lunar_phases_horizons.tsv");
+const ECLIPSE_GEOMETRY_VECTORS: &str = include_str!("vectors/eclipse_geometry_horizons.tsv");
 const HORIZONS_FIXTURE: Model = Model::new("NASA/JPL Horizons DE441 fixture", "2026-08-23");
 
 #[test]
@@ -231,6 +234,97 @@ fn april_lunar_phases_match_horizons_and_nasa() {
 }
 
 #[test]
+fn eclipse_candidates_match_horizons_geometry_and_nasa_classes() {
+    let cases = [
+        (
+            (2024, 3, 25, 7, 0),
+            Some(EclipseCandidateKind::PenumbralLunar),
+        ),
+        ((2024, 4, 8, 18, 21), Some(EclipseCandidateKind::Solar)),
+        ((2024, 4, 23, 23, 49), None),
+        ((2024, 5, 8, 3, 22), None),
+        (
+            (2024, 9, 18, 2, 34),
+            Some(EclipseCandidateKind::PartialLunar),
+        ),
+        ((2025, 3, 14, 6, 55), Some(EclipseCandidateKind::TotalLunar)),
+        ((2025, 3, 29, 10, 58), Some(EclipseCandidateKind::Solar)),
+    ];
+    let fixture = HorizonsFixtureProvider::eclipse_geometry();
+
+    for &((year, month, day, hour, minute), expected_kind) in &cases {
+        let reference = tt_from_utc(year, month, day, hour, minute, 0.0);
+        let start = reference.offset_days(-10.0 / 1_440.0).unwrap();
+        let end = reference.offset_days(10.0 / 1_440.0).unwrap();
+        let window = SearchWindow::new(start, end, 10.0 / 1_440.0, 1.0 / 86_400.0)
+            .expect("valid eclipse candidate window");
+        assert_eq!(
+            ecliptic_longitude_lunar_phases(&fixture, window)
+                .expect("fixture phase search succeeds")
+                .len(),
+            1
+        );
+        assert_eq!(
+            ecliptic_longitude_lunar_phases(&AnalyticalEphemeris, window)
+                .expect("analytical phase search succeeds")
+                .len(),
+            1
+        );
+        let fixture_candidates =
+            eclipse_candidates(&fixture, window).expect("fixture eclipse search succeeds");
+        let analytical_candidates = eclipse_candidates(&AnalyticalEphemeris, window)
+            .expect("analytical eclipse search succeeds");
+
+        match expected_kind {
+            None => {
+                assert!(fixture_candidates.is_empty());
+                assert!(analytical_candidates.is_empty());
+            }
+            Some(kind) => {
+                assert_eq!(fixture_candidates.len(), 1);
+                assert_eq!(analytical_candidates.len(), 1);
+                let fixture_candidate = &fixture_candidates[0];
+                let analytical_candidate = &analytical_candidates[0];
+                assert_eq!(fixture_candidate.kind(), kind);
+                assert_eq!(analytical_candidate.kind(), kind);
+                assert_eq!(
+                    fixture_candidate.geometry_model(),
+                    SPHERICAL_ECLIPSE_GEOMETRY
+                );
+                assert_eq!(
+                    analytical_candidate.geometry_model(),
+                    SPHERICAL_ECLIPSE_GEOMETRY
+                );
+                assert_eq!(fixture_candidate.provider_model(), HORIZONS_FIXTURE);
+                assert_eq!(analytical_candidate.provider_model(), ANALYTICAL_APPARENT);
+                assert_eq!(
+                    fixture_candidate.provider_snapshot(),
+                    Some(
+                        "Horizons API 1.2 / DE441 / eclipse geometry fixture generated 2026-08-24"
+                    )
+                );
+                assert_eq!(analytical_candidate.provider_snapshot(), None);
+                assert!(fixture_candidate.interval().width_days() * 86_400.0 <= 1.001);
+                assert!(analytical_candidate.interval().width_days() * 86_400.0 <= 1.001);
+                let provider_delta = seconds_apart(
+                    fixture_candidate.interval().midpoint(),
+                    analytical_candidate.interval().midpoint(),
+                );
+                eprintln!("provider phase-root delta: {:.3}s", provider_delta);
+                assert!(provider_delta < 20.0);
+                print_eclipse_geometry(
+                    year,
+                    month,
+                    day,
+                    fixture_candidate.geometry(),
+                    analytical_candidate.geometry(),
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn lunar_phase_sequence_crosses_the_longitude_wrap() {
     let start = JulianDate::<TerrestrialTime>::from_julian_day(2_451_545.0).unwrap();
     let end = start.offset_days(1.0).unwrap();
@@ -307,6 +401,22 @@ fn provider_failures_are_not_reported_as_an_empty_search() {
         ecliptic_longitude_lunar_phases(&fixture, window),
         Err(EventError::Position {
             source: FixtureError::OutsideFixture,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn eclipse_geometry_refuses_a_body_inside_its_required_radius() {
+    let start = JulianDate::<TerrestrialTime>::from_julian_day(2_451_545.0).unwrap();
+    let end = start.offset_days(1.0).unwrap();
+    let window = SearchWindow::new(start, end, 0.25, 1.0 / 86_400.0).unwrap();
+    let provider = ZeroDistanceProvider { origin: start };
+    assert!(matches!(
+        eclipse_candidates(&provider, window),
+        Err(EventError::DistanceTooSmall {
+            body: ApparentBody::Moon,
+            distance_km: 0.0,
             ..
         })
     ));
@@ -422,6 +532,22 @@ impl HorizonsFixtureProvider {
         )
     }
 
+    fn eclipse_geometry() -> Self {
+        Self::from_vectors(
+            ECLIPSE_GEOMETRY_VECTORS,
+            42,
+            &[
+                "oracle: NASA/JPL Horizons API 1.2, DE441",
+                "2024-03-25 penumbral lunar",
+                "09-18 partial lunar",
+                "2025-03-14 total lunar",
+                "03-29 partial solar",
+                "fetch_horizons_eclipse_vectors.ps1",
+            ],
+            "Horizons API 1.2 / DE441 / eclipse geometry fixture generated 2026-08-24",
+        )
+    }
+
     fn from_vectors(
         vectors: &str,
         expected_rows: usize,
@@ -529,6 +655,43 @@ struct QuadraticProvider {
     station_day: f64,
 }
 
+struct ZeroDistanceProvider {
+    origin: JulianDate<TerrestrialTime>,
+}
+
+impl GeocentricPositionProvider for ZeroDistanceProvider {
+    type Error = ();
+
+    fn model(&self) -> Model {
+        Model::new("zero-distance test provider", "1")
+    }
+
+    fn position(
+        &self,
+        body: ApparentBody,
+        epoch: JulianDate<TerrestrialTime>,
+    ) -> Result<State<TrueEclipticEquinoxOfDate>, Self::Error> {
+        let longitude = if body == ApparentBody::Moon {
+            350.0 + 20.0 * (epoch.day() - self.origin.day())
+        } else {
+            0.0
+        };
+        let distance = if body == ApparentBody::Moon {
+            Distance::from_kilometers(0.0).unwrap()
+        } else {
+            Distance::from_astronomical_units(1.0).unwrap()
+        };
+        Ok(State::new(
+            epoch,
+            Direction::new(
+                Longitude::from_degrees(longitude).unwrap(),
+                Latitude::from_degrees(0.0).unwrap(),
+            ),
+            distance,
+        ))
+    }
+}
+
 impl GeocentricPositionProvider for QuadraticProvider {
     type Error = ();
 
@@ -607,4 +770,87 @@ fn signed_seconds(first: JulianDate<TerrestrialTime>, second: JulianDate<Terrest
 
 fn signed_degrees(angle: f64) -> f64 {
     (angle + 180.0).rem_euclid(360.0) - 180.0
+}
+
+fn print_eclipse_geometry(
+    year: i32,
+    month: u8,
+    day: u8,
+    fixture: EclipseCandidateGeometry,
+    analytical: EclipseCandidateGeometry,
+) {
+    match (fixture, analytical) {
+        (
+            EclipseCandidateGeometry::Solar {
+                center_separation: fixture_separation,
+                sun_angular_radius: fixture_sun,
+                moon_angular_radius: fixture_moon,
+                observer_parallax_allowance: fixture_parallax,
+            },
+            EclipseCandidateGeometry::Solar {
+                center_separation: analytical_separation,
+                sun_angular_radius: analytical_sun,
+                moon_angular_radius: analytical_moon,
+                observer_parallax_allowance: analytical_parallax,
+            },
+        ) => {
+            eprintln!(
+                "{year:04}-{month:02}-{day:02} solar: separation {:.6}/{:.6} deg; disk radii {:.6}+{:.6}/{:.6}+{:.6} deg; parallax allowance {:.6}/{:.6} deg",
+                fixture_separation.degrees(),
+                analytical_separation.degrees(),
+                fixture_sun.degrees(),
+                fixture_moon.degrees(),
+                analytical_sun.degrees(),
+                analytical_moon.degrees(),
+                fixture_parallax.degrees(),
+                analytical_parallax.degrees(),
+            );
+            assert!((fixture_separation.degrees() - analytical_separation.degrees()).abs() < 0.01);
+            assert!((fixture_sun.degrees() - analytical_sun.degrees()).abs() < 0.001);
+            assert!((fixture_moon.degrees() - analytical_moon.degrees()).abs() < 0.001);
+            assert!((fixture_parallax.degrees() - analytical_parallax.degrees()).abs() < 0.001);
+            if (year, month, day) == (2025, 3, 29) {
+                assert!(
+                    fixture_separation.radians() > fixture_sun.radians() + fixture_moon.radians()
+                );
+                assert!(
+                    fixture_separation.radians()
+                        <= fixture_sun.radians()
+                            + fixture_moon.radians()
+                            + fixture_parallax.radians()
+                );
+            }
+        }
+        (
+            EclipseCandidateGeometry::Lunar {
+                shadow_axis_separation: fixture_axis,
+                moon_angular_radius: fixture_moon,
+                umbra_angular_radius: fixture_umbra,
+                penumbra_angular_radius: fixture_penumbra,
+            },
+            EclipseCandidateGeometry::Lunar {
+                shadow_axis_separation: analytical_axis,
+                moon_angular_radius: analytical_moon,
+                umbra_angular_radius: analytical_umbra,
+                penumbra_angular_radius: analytical_penumbra,
+            },
+        ) => {
+            eprintln!(
+                "{year:04}-{month:02}-{day:02} lunar: axis {:.6}/{:.6} deg; Moon radius {:.6}/{:.6} deg; umbra {:.6}/{:.6} deg; penumbra {:.6}/{:.6} deg",
+                fixture_axis.degrees(),
+                analytical_axis.degrees(),
+                fixture_moon.degrees(),
+                analytical_moon.degrees(),
+                fixture_umbra.degrees(),
+                analytical_umbra.degrees(),
+                fixture_penumbra.degrees(),
+                analytical_penumbra.degrees(),
+            );
+            assert!((fixture_axis.degrees() - analytical_axis.degrees()).abs() < 0.01);
+            assert!((fixture_moon.degrees() - analytical_moon.degrees()).abs() < 0.001);
+            assert!((fixture_umbra.degrees() - analytical_umbra.degrees()).abs() < 0.001);
+            assert!((fixture_penumbra.degrees() - analytical_penumbra.degrees()).abs() < 0.001);
+        }
+        _ => panic!("providers returned different eclipse geometry variants"),
+    }
 }

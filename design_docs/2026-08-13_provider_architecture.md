@@ -157,3 +157,18 @@ apparent Moon-minus-Sun ecliptic longitude. The result retains the phase,
 bounded TT interval, great-circle center separation, and provider identity.
 This keeps illumination and eclipse policy out of the phase name while making
 the shared geometry executable through analytical and Horizons providers.
+
+## T4d addendum: 2026-08-24
+
+Eclipse candidates compose the phase search with provider-supplied directions
+and distances. A solar candidate applies a conservative global parallax
+allowance, so it does not pretend that a geocentric overlap is required or
+that one observer's contacts have been solved. A lunar candidate compares the
+Moon with a spherical, atmosphere-free Earth shadow and can therefore name
+penumbral, partial, and total geocentric classes.
+
+The result records the position-provider identity, geometry-model revision,
+phase interval, and every angular term used by its predicate. NASA-listed
+events and ordinary phase controls run through both analytical and committed
+Horizons providers. Observer contacts, solar local type, visibility, Earth
+oblateness, atmospheric shadow enlargement, and terrain remain later layers.
