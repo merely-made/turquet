@@ -5,9 +5,10 @@
 //!
 //! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
 //! stationary points, lunar quarter phases, eclipse candidates, lunar eclipse
-//! circumstances, airless observer-altitude crossings and extrema, and
-//! sampled altitude-threshold circumstances. Every event result is a bounded
-//! TT interval, not an isolated floating-point instant.
+//! circumstances, airless observer-altitude crossings and extrema, sampled
+//! altitude-threshold circumstances, airless rise/set naming, and topocentric
+//! meridian transits. Every event result is a bounded TT interval, not an
+//! isolated floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
@@ -17,7 +18,9 @@ use foundation::{
     Angle, Distance, JulianDate, Longitude, Model, Observer, State, TerrestrialTime,
     TrueEclipticEquinoxOfDate,
 };
-use observer::{ObserverTransform, ObserverTransformError, AIRLESS_TOPOCENTRIC_TRANSFORM};
+use observer::{
+    Observation, ObserverTransform, ObserverTransformError, AIRLESS_TOPOCENTRIC_TRANSFORM,
+};
 use provider::{EarthOrientationProvider, GeocentricPositionProvider};
 
 const TWO_PI: f64 = 2.0 * PI;
@@ -41,6 +44,12 @@ pub const MAX_ALTITUDE_EXTREMUM_STEP_DAYS: f64 = MAX_ALTITUDE_CROSSING_STEP_DAYS
 
 /// Maximum full central-difference span used to classify altitude motion.
 pub const MAX_ALTITUDE_DERIVATIVE_SPAN_DAYS: f64 = 1.0 / 24.0;
+
+/// Maximum sampling step accepted by a meridian-transit search.
+///
+/// The one-hour ceiling bounds the sampled local-hour-angle contract. It does
+/// not prove the absence of tangencies or multiple meridian crossings.
+pub const MAX_MERIDIAN_TRANSIT_STEP_DAYS: f64 = 1.0 / 24.0;
 
 /// Backward-compatible name for the shared event sampling ceiling.
 pub const MAX_CONJUNCTION_STEP_DAYS: f64 = MAX_EVENT_STEP_DAYS;
@@ -67,6 +76,17 @@ pub const MEAN_LUNAR_RADIUS_KM: f64 = 1_737.4;
 /// and terrain.
 pub const SPHERICAL_ECLIPSE_GEOMETRY: Model =
     Model::new("atmosphere-free spherical eclipse candidate geometry", "1");
+
+/// Naming model for a caller-selected airless center-altitude crossing.
+///
+/// It deliberately excludes refraction, apparent limb, horizon dip, terrain,
+/// obstruction, civil convention, and visibility policy.
+pub const AIRLESS_RISE_SET_NAMING: Model =
+    Model::new("caller-threshold airless center rise/set naming", "1");
+
+/// Topocentric apparent local-meridian event model.
+pub const TOPOCENTRIC_MERIDIAN_TRANSIT_MODEL: Model =
+    Model::new("topocentric apparent local-meridian transit", "1");
 
 /// Validated numerical controls for an event search.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -200,6 +220,42 @@ impl fmt::Display for AltitudeCrossingSearchError {
 }
 
 impl ::std::error::Error for AltitudeCrossingSearchError {}
+
+/// Validated numerical controls for sampled topocentric meridian transits.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MeridianTransitSearch {
+    window: SearchWindow,
+}
+
+impl MeridianTransitSearch {
+    pub fn new(window: SearchWindow) -> Result<Self, MeridianTransitSearchError> {
+        if window.step_days() > MAX_MERIDIAN_TRANSIT_STEP_DAYS {
+            return Err(MeridianTransitSearchError::StepTooLarge);
+        }
+        Ok(Self { window })
+    }
+
+    pub fn window(self) -> SearchWindow {
+        self.window
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MeridianTransitSearchError {
+    StepTooLarge,
+}
+
+impl fmt::Display for MeridianTransitSearchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            MeridianTransitSearchError::StepTooLarge => {
+                formatter.write_str("meridian-transit search step exceeds one TT hour")
+            }
+        }
+    }
+}
+
+impl ::std::error::Error for MeridianTransitSearchError {}
 
 /// Numerical controls for sampled, bracketed airless altitude extrema.
 ///
@@ -550,6 +606,112 @@ impl AirlessAltitudeCrossing {
 
     pub fn threshold(&self) -> Angle {
         self.threshold
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+
+    pub fn transform_model(&self) -> Model {
+        self.transform_model
+    }
+
+    pub fn earth_orientation_authority(&self) -> &str {
+        &self.earth_orientation_authority
+    }
+
+    pub fn earth_orientation_snapshot(&self) -> &str {
+        &self.earth_orientation_snapshot
+    }
+}
+
+/// Named direction through a caller-selected airless center altitude.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AirlessRiseSetKind {
+    Rise,
+    Set,
+}
+
+/// One named projection of an airless altitude crossing.
+///
+/// This is not a conventional civil sunrise, sunset, moonrise, or moonset.
+/// The nested crossing retains the caller-selected physical threshold and all
+/// position, transform, and Earth-orientation provenance.
+#[derive(Clone, Debug, PartialEq)]
+pub struct AirlessRiseSetEvent {
+    kind: AirlessRiseSetKind,
+    crossing: AirlessAltitudeCrossing,
+    naming_model: Model,
+}
+
+impl AirlessRiseSetEvent {
+    pub fn kind(&self) -> AirlessRiseSetKind {
+        self.kind
+    }
+
+    pub fn crossing(&self) -> &AirlessAltitudeCrossing {
+        &self.crossing
+    }
+
+    pub fn naming_model(&self) -> Model {
+        self.naming_model
+    }
+}
+
+/// Which local meridian the topocentric apparent body crosses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MeridianTransitKind {
+    Upper,
+    Lower,
+}
+
+/// One sampled topocentric apparent meridian transit.
+///
+/// `midpoint_altitude` is an airless estimate at the TT interval midpoint; it
+/// is neither a visibility classification nor an angular bound over the whole
+/// interval. Upper and lower transits remain valid below the horizon.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MeridianTransitEvent {
+    body: ApparentBody,
+    kind: MeridianTransitKind,
+    interval: EventInterval,
+    midpoint_altitude: Angle,
+    observer: Observer,
+    transit_model: Model,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+    transform_model: Model,
+    earth_orientation_authority: String,
+    earth_orientation_snapshot: String,
+}
+
+impl MeridianTransitEvent {
+    pub fn body(&self) -> ApparentBody {
+        self.body
+    }
+
+    pub fn kind(&self) -> MeridianTransitKind {
+        self.kind
+    }
+
+    pub fn interval(&self) -> EventInterval {
+        self.interval
+    }
+
+    pub fn midpoint_altitude(&self) -> Angle {
+        self.midpoint_altitude
+    }
+
+    pub fn observer(&self) -> Observer {
+        self.observer
+    }
+
+    pub fn transit_model(&self) -> Model {
+        self.transit_model
     }
 
     pub fn provider_model(&self) -> Model {
@@ -1304,6 +1466,12 @@ pub type AltitudeExtremumError<P, E> = AltitudeCrossingError<P, E>;
 /// Error boundary shared by bounded airless altitude circumstances.
 pub type AltitudeCircumstanceError<P, E> = AltitudeCrossingError<P, E>;
 
+/// Error boundary shared by named airless rise/set events.
+pub type AirlessRiseSetError<P, E> = AltitudeCrossingError<P, E>;
+
+/// Error boundary shared by topocentric meridian-transit events.
+pub type MeridianTransitError<P, E> = AltitudeCrossingError<P, E>;
+
 #[derive(Clone, Copy)]
 struct AltitudeSample {
     epoch: JulianDate<TerrestrialTime>,
@@ -1361,6 +1529,40 @@ where
         &samples,
         &orientation_authority,
         &orientation_snapshot,
+    )
+}
+
+/// Name sampled airless center-altitude crossings as rises or sets.
+///
+/// `search.threshold()` is caller policy. This does not apply refraction,
+/// limb, horizon dip, terrain, obstruction, civil convention, or visibility
+/// selection. An empty result has the same limited sampled meaning as
+/// [`airless_altitude_crossings`].
+pub fn airless_rise_set_events<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    search: AltitudeCrossingSearch,
+) -> Result<Vec<AirlessRiseSetEvent>, AirlessRiseSetError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    airless_altitude_crossings(positions, earth_orientation, observer, body, search).map(
+        |crossings| {
+            crossings
+                .into_iter()
+                .map(|crossing| AirlessRiseSetEvent {
+                    kind: match crossing.kind() {
+                        AltitudeCrossingKind::Ascending => AirlessRiseSetKind::Rise,
+                        AltitudeCrossingKind::Descending => AirlessRiseSetKind::Set,
+                    },
+                    crossing,
+                    naming_model: AIRLESS_RISE_SET_NAMING,
+                })
+                .collect()
+        },
     )
 }
 
@@ -1527,6 +1729,33 @@ where
     P: GeocentricPositionProvider,
     E: EarthOrientationProvider,
 {
+    Ok(observer_observation(
+        positions,
+        earth_orientation,
+        observer,
+        body,
+        epoch,
+        expected_authority,
+        expected_snapshot,
+    )?
+    .horizon()
+    .latitude()
+    .radians())
+}
+
+fn observer_observation<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<Observation, AltitudeCrossingError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
     let state =
         positions
             .position(body, epoch)
@@ -1568,7 +1797,7 @@ where
             epoch,
             source,
         })?;
-    Ok(observation.value().horizon().latitude().radians())
+    Ok(observation.into_value())
 }
 
 fn refine_scalar_root<F, T>(
@@ -1603,6 +1832,239 @@ where
         start: left.epoch,
         end: right.epoch,
     })
+}
+
+/// Find sampled upper and lower topocentric meridian transits.
+///
+/// The root scalar is `cos(declination) * sin(local apparent hour angle)`.
+/// It crosses the local meridian without an angular wrap and becomes a zero
+/// plateau at the celestial pole rather than fabricating a transit. An upper
+/// or lower result can be below the horizon.
+///
+/// A sign change is refined into a bounded TT interval. An exact root at an
+/// interior sample needs opposite signs on either side; at a search boundary,
+/// the available one-sided sign is sufficient, matching altitude crossings.
+pub fn meridian_transits<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    search: MeridianTransitSearch,
+) -> Result<Vec<MeridianTransitEvent>, MeridianTransitError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let orientation_authority = earth_orientation.authority().to_owned();
+    let orientation_snapshot = earth_orientation.data_snapshot().to_owned();
+    let window = search.window();
+    let mut samples = Vec::new();
+    let mut epoch = window.start();
+    loop {
+        samples.push(ScalarSample {
+            epoch,
+            value: meridian_components(
+                positions,
+                earth_orientation,
+                observer,
+                body,
+                epoch,
+                &orientation_authority,
+                &orientation_snapshot,
+            )?
+            .0,
+        });
+        if epoch.day() >= window.end().day() {
+            break;
+        }
+        let next_day = (epoch.day() + window.step_days()).min(window.end().day());
+        epoch = JulianDate::from_julian_day(next_day)
+            .expect("a bounded meridian-transit step remains finite");
+    }
+
+    let mut events = Vec::new();
+    let mut index = 0;
+    while index < samples.len() {
+        let left = samples[index];
+        if left.value == 0.0 {
+            let zero_start = index;
+            let mut zero_end = index;
+            while zero_end + 1 < samples.len() && samples[zero_end + 1].value == 0.0 {
+                zero_end += 1;
+            }
+            let before = if zero_start > 0 {
+                Some(samples[zero_start - 1].value)
+            } else {
+                None
+            };
+            let after = if zero_end + 1 < samples.len() {
+                Some(samples[zero_end + 1].value)
+            } else {
+                None
+            };
+            if exact_meridian_crossing(zero_end - zero_start + 1, before, after) {
+                push_meridian_transit(
+                    &mut events,
+                    positions,
+                    earth_orientation,
+                    observer,
+                    body,
+                    EventInterval {
+                        start: left.epoch,
+                        end: left.epoch,
+                    },
+                    &orientation_authority,
+                    &orientation_snapshot,
+                )?;
+            }
+            index = zero_end + 1;
+            continue;
+        }
+
+        if index + 1 < samples.len() {
+            let right = samples[index + 1];
+            if right.value != 0.0 && left.value.signum() != right.value.signum() {
+                let interval = refine_scalar_root(left, right, window.tolerance_days(), |epoch| {
+                    meridian_components(
+                        positions,
+                        earth_orientation,
+                        observer,
+                        body,
+                        epoch,
+                        &orientation_authority,
+                        &orientation_snapshot,
+                    )
+                    .map(|components| components.0)
+                })?;
+                push_meridian_transit(
+                    &mut events,
+                    positions,
+                    earth_orientation,
+                    observer,
+                    body,
+                    interval,
+                    &orientation_authority,
+                    &orientation_snapshot,
+                )?;
+            }
+        }
+        index += 1;
+    }
+
+    Ok(events)
+}
+
+fn meridian_components<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<(f64, f64), MeridianTransitError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let observation = observer_observation(
+        positions,
+        earth_orientation,
+        observer,
+        body,
+        epoch,
+        expected_authority,
+        expected_snapshot,
+    )?;
+    Ok(meridian_components_from_observation(&observation))
+}
+
+fn meridian_components_from_observation(observation: &Observation) -> (f64, f64) {
+    let equatorial = observation.equatorial();
+    meridian_components_from_angles(
+        equatorial.direction().latitude().radians(),
+        observation.local_apparent_hour_angle().radians(),
+    )
+}
+
+fn meridian_components_from_angles(declination: f64, hour_angle: f64) -> (f64, f64) {
+    let declination_cosine = if declination.abs() == PI / 2.0 {
+        0.0
+    } else {
+        declination.cos()
+    };
+    (
+        declination_cosine * hour_angle.sin(),
+        declination_cosine * hour_angle.cos(),
+    )
+}
+
+fn exact_meridian_crossing(
+    zero_sample_count: usize,
+    before: Option<f64>,
+    after: Option<f64>,
+) -> bool {
+    zero_sample_count == 1
+        && match (before, after) {
+            (Some(left), Some(right)) => left.signum() != right.signum(),
+            (None, Some(_)) | (Some(_), None) => true,
+            (None, None) => false,
+        }
+}
+
+fn push_meridian_transit<P, E>(
+    events: &mut Vec<MeridianTransitEvent>,
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    interval: EventInterval,
+    orientation_authority: &str,
+    orientation_snapshot: &str,
+) -> Result<(), MeridianTransitError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let observation = observer_observation(
+        positions,
+        earth_orientation,
+        observer,
+        body,
+        interval.midpoint(),
+        orientation_authority,
+        orientation_snapshot,
+    )?;
+    let (_, classifier) = meridian_components_from_observation(&observation);
+    let kind = match meridian_transit_kind(classifier) {
+        Some(kind) => kind,
+        None => return Ok(()),
+    };
+    let midpoint_altitude = observation.horizon().latitude().angle();
+    events.push(MeridianTransitEvent {
+        body,
+        kind,
+        interval,
+        midpoint_altitude,
+        observer,
+        transit_model: TOPOCENTRIC_MERIDIAN_TRANSIT_MODEL,
+        provider_model: positions.model(),
+        provider_snapshot: positions.data_snapshot().map(str::to_owned),
+        transform_model: AIRLESS_TOPOCENTRIC_TRANSFORM,
+        earth_orientation_authority: orientation_authority.to_owned(),
+        earth_orientation_snapshot: orientation_snapshot.to_owned(),
+    });
+    Ok(())
+}
+
+fn meridian_transit_kind(classifier: f64) -> Option<MeridianTransitKind> {
+    if classifier > 0.0 {
+        Some(MeridianTransitKind::Upper)
+    } else if classifier < 0.0 {
+        Some(MeridianTransitKind::Lower)
+    } else {
+        None
+    }
 }
 
 /// Find sampled, bracketed roots of the selected airless-altitude derivative.
@@ -2958,9 +3420,11 @@ fn angular_radius(radius_km: f64, distance_km: f64) -> Angle {
 mod altitude_crossing_tests {
     use super::{
         classify_altitude_threshold, exact_crossing_kind, exact_extremum_kind,
+        exact_meridian_crossing, meridian_components_from_angles, meridian_transit_kind,
         AltitudeCrossingKind, AltitudeExtremumKind, AltitudeSample, AltitudeThresholdState, Angle,
-        JulianDate, TerrestrialTime,
+        JulianDate, MeridianTransitKind, TerrestrialTime,
     };
+    use std::f64::consts::PI;
 
     #[test]
     fn exact_sample_requires_crossing_signs_in_the_interior() {
@@ -3019,5 +3483,25 @@ mod altitude_crossing_tests {
             Angle::from_radians(0.01).unwrap(),
         );
         assert!(matches!(state, AltitudeThresholdState::Unresolved { .. }));
+    }
+
+    #[test]
+    fn meridian_exact_root_requires_a_single_zero_sample_and_a_crossing() {
+        assert!(exact_meridian_crossing(1, Some(-1.0), Some(1.0)));
+        assert!(exact_meridian_crossing(1, None, Some(1.0)));
+        assert!(!exact_meridian_crossing(1, Some(1.0), Some(1.0)));
+        assert!(!exact_meridian_crossing(2, Some(-1.0), Some(1.0)));
+    }
+
+    #[test]
+    fn meridian_pole_is_a_zero_plateau_not_a_transit() {
+        assert_eq!(meridian_components_from_angles(PI / 2.0, -1.0), (0.0, 0.0));
+        assert_eq!(meridian_components_from_angles(-PI / 2.0, 1.0), (0.0, 0.0));
+        assert_eq!(meridian_transit_kind(0.0), None);
+        assert_eq!(meridian_transit_kind(1.0), Some(MeridianTransitKind::Upper));
+        assert_eq!(
+            meridian_transit_kind(-1.0),
+            Some(MeridianTransitKind::Lower)
+        );
     }
 }

@@ -8,6 +8,7 @@
 //! drives Earth rotation. Polar motion is caller-supplied observational data.
 //! The default calculation is airless and uses the WGS84 reference ellipsoid.
 
+use std::f64::consts::PI;
 use std::fmt;
 
 use apparent::{ApparentBody, ApparentError, ApparentSky};
@@ -137,6 +138,77 @@ impl Observation {
     pub fn horizon(&self) -> Direction<TopocentricHorizon> {
         self.horizon
     }
+
+    /// Signed local apparent hour angle on `[-pi, pi)`.
+    ///
+    /// This is local apparent sidereal time minus topocentric apparent right
+    /// ascension. It is positive west of the local meridian and uses the
+    /// observation's TT, UT1, polar-motion-adjusted observer longitude, and
+    /// IAU 2006/2000A sidereal model.
+    pub(crate) fn local_apparent_hour_angle(&self) -> Angle {
+        let (ut1a, ut1b) = self.earth_orientation.ut1().parts();
+        let (tta, ttb) = self.equatorial.epoch().parts();
+        let greenwich = sofars::erst::gst06a(ut1a, ut1b, tta, ttb);
+        let local = greenwich
+            + polar_motion_adjusted_longitude(
+                self.equatorial.epoch(),
+                &self.earth_orientation,
+                self.observer,
+            );
+        let right_ascension = self.equatorial.direction().longitude().radians();
+        let signed = (local - right_ascension + PI).rem_euclid(2.0 * PI) - PI;
+        Angle::from_radians(signed).expect("sidereal and right-ascension angles are finite")
+    }
+}
+
+/// Return the observer longitude corrected onto the local meridian.
+///
+/// SOFA's `apio` couples the geodetic site with TT, UT1, and polar motion to
+/// produce `along`. The meridian-transit path combines that adjusted longitude
+/// with equinox-based Greenwich apparent sidereal time because Turquet's
+/// topocentric right ascension is on the true equator and equinox of date.
+fn polar_motion_adjusted_longitude(
+    epoch: JulianDate<TerrestrialTime>,
+    earth_orientation: &EarthOrientation,
+    observer: Observer,
+) -> f64 {
+    let (tta, ttb) = epoch.parts();
+    let (ut1a, ut1b) = earth_orientation.ut1().parts();
+    local_meridian_angles(
+        sofars::pnp::sp00(tta, ttb),
+        sofars::erst::era00(ut1a, ut1b),
+        observer.longitude().radians(),
+        observer.latitude().radians(),
+        observer.height().meters(),
+        earth_orientation.polar_motion_x().radians(),
+        earth_orientation.polar_motion_y().radians(),
+    )
+    .0
+}
+
+fn local_meridian_angles(
+    sp: f64,
+    theta: f64,
+    longitude: f64,
+    latitude: f64,
+    height_meters: f64,
+    polar_motion_x: f64,
+    polar_motion_y: f64,
+) -> (f64, f64) {
+    let mut astrom = sofars::astro::IauAstrom::default();
+    sofars::astro::apio(
+        sp,
+        theta,
+        longitude,
+        latitude,
+        height_meters,
+        polar_motion_x,
+        polar_motion_y,
+        0.0,
+        0.0,
+        &mut astrom,
+    );
+    (astrom.along, astrom.eral)
 }
 
 /// A rejected provider-neutral observer transformation.
@@ -431,4 +503,33 @@ fn dot(left: [f64; 3], right: [f64; 3]) -> f64 {
 
 fn norm(vector: [f64; 3]) -> f64 {
     dot(vector, vector).sqrt()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::local_meridian_angles;
+
+    #[test]
+    fn local_meridian_angles_match_sofa_apio_vector() {
+        // IAU SOFA 2023-10-11, t_sofa_c iauApio.
+        let (along, eral) = local_meridian_angles(
+            -3.019_743_37e-11,
+            3.145_409_71,
+            -0.527_800_806,
+            -1.234_585_6,
+            2_738.0,
+            2.472_307_37e-7,
+            1.826_404_64e-6,
+        );
+        assert!(
+            (along - -0.527_800_806_029_599_6).abs() < 1e-12,
+            "adjusted longitude {}",
+            along,
+        );
+        assert!(
+            (eral - 2.617_608_903_970_400_4).abs() < 1e-12,
+            "local ERA {}",
+            eral
+        );
+    }
 }

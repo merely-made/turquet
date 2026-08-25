@@ -238,3 +238,28 @@ position provider do not establish a persistent or circumpolar state.
 Meridian transit remains separate because it is an hour-angle event, not an
 altitude-extremum synonym. Refraction, horizon policy, and named rise/set also
 remain consumer-facing layers over these airless facts.
+
+## T4h addendum: 2026-08-24
+
+`airless_rise_set_events` now gives a deliberately narrow name to an existing
+airless crossing: ascending means `Rise`, descending means `Set`, and the
+caller-selected center-altitude threshold remains in the nested fact. The
+revisioned naming model does not smuggle in a solar/lunar limb, refraction,
+horizon dip, terrain, obstruction, civil-day, or visibility policy. Those
+remain consumer-owned choices over the engine's physical airless facts.
+
+`meridian_transits` is a separate event family. It samples the non-wrapping
+scalar `cos(topocentric declination) * sin(local apparent hour angle)`, then
+classifies a root with `cos(topocentric declination) * cos(local apparent hour
+angle)` as upper or lower. The apparent hour angle combines equinox-based GAST,
+SOFA's TIO/polar-motion-adjusted local meridian, and Turquet's topocentric
+true-equator/equinox right ascension. This keeps a lower transit valid below
+the horizon and prevents a moving Moon's altitude maximum from becoming an
+accidental definition of transit.
+
+Exact samples preserve the crossing family's explicit one-sided boundary rule;
+flat sampled zero runs do not manufacture an event. An exact celestial pole is
+also omitted because its right ascension is undefined. Each accepted result
+retains its bounded TT interval, observer, provider model/snapshot,
+topocentric transform model, and Earth-orientation authority/snapshot. Direct
+Horizons quantity-42 local hour angles supply the independent reference path.

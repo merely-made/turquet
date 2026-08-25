@@ -88,7 +88,7 @@ foreach ($case in $cases) {
     $topocentricParameters.CENTER = "'coord@399'"
     $topocentricParameters.COORD_TYPE = "'GEODETIC'"
     $topocentricParameters.SITE_COORD = "'$($case.Coordinates)'"
-    $topocentricParameters.QUANTITIES = "'4,49'"
+    $topocentricParameters.QUANTITIES = "'4,42,49'"
     $topocentricResponse = Invoke-Horizons $topocentricParameters
 
     foreach ($response in @($geocentricResponse, $topocentricResponse)) {
@@ -121,7 +121,8 @@ foreach ($case in $cases) {
             $geocentric[6],
             $geocentric[3],
             $topocentric[4],
-            $topocentric[5]
+            $topocentric[5],
+            $topocentric[6]
         ) -join "`t"))
     }
 }
@@ -133,13 +134,13 @@ if (-not $apiVersion -or -not $eopSnapshot) {
 $generated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
 @(
     '# Turquet airless altitude-crossing vectors',
-    "# oracle: NASA/JPL Horizons API $apiVersion, DE441, quantities 4,20,31,49, APPARENT=AIRLESS",
+    "# oracle: NASA/JPL Horizons API $apiVersion, DE441, quantities 4,20,31,42,49, APPARENT=AIRLESS",
     "# generated: $generated; EOP $eopSnapshot",
     '# sampling: five-minute UTC grid including both endpoints of each 24-hour case',
     '# sites: user-defined WGS84 geodetic longitude degrees east, latitude degrees north, height km',
     '# cases: Boston Sun ordinary pair; Sydney Moon ordinary pair; Tromso Sun midsummer empty control',
     '# polar motion: Horizons applies its EOP pole; Turquet test explicitly approximates xp=yp=0',
     '# regenerate: pwsh -File scripts/fetch_horizons_altitude_crossing_vectors.ps1 > tests/vectors/altitude_crossings_horizons.tsv',
-    '# columns: case, site lon/lat/height, JD UTC, body, geocentric apparent longitude degrees, latitude degrees, range AU, direct topocentric altitude degrees, DUT1 seconds'
+    '# columns: case, site lon/lat/height, JD UTC, body, geocentric apparent longitude degrees, latitude degrees, range AU, direct topocentric altitude degrees, direct local apparent hour angle decimal hours, DUT1 seconds'
 )
 $rows

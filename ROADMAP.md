@@ -199,8 +199,24 @@ airless elevations, the measured worst residual is 0.454 seconds in time and
 0.000244 degrees in altitude. See
 `receipts/2026-08-24_t4g_altitude_circumstances.md`.
 
+**Eighth slice completed 2026-08-24.** `airless_rise_set_events` now names an
+ascending caller-threshold airless center crossing `Rise` and a descending one
+`Set`, while retaining the crossing and a revisioned naming model. It selects
+neither a conventional solar/lunar limb nor refraction, horizon dip, terrain,
+civil, or visibility policy. `meridian_transits` separately finds upper and
+lower roots of topocentric apparent local hour angle, using IAU 2006/2000A
+Greenwich apparent sidereal time plus SOFA's polar-motion-adjusted local
+meridian. A lower transit can occur below the horizon, and the exact celestial
+pole becomes an unnamed zero plateau rather than a fabricated transit. Boston
+Sun, Sydney Moon, and Tromso Sun cases run through both position providers
+against direct Horizons quantity-42 local apparent hour angles; all twelve
+provider/reference comparisons are within 0.220 seconds. The Sydney Moon's
+upper transit is 213.281 seconds from its airless altitude maximum, proving the
+two event contracts remain distinct. See
+`receipts/2026-08-24_t4h_horizon_transits.md`.
+
 T4 remains open for observer-relative solar contacts and eclipse visibility,
-named rise/set and transit policy, general visibility, and
+conventional refraction/limb/horizon rise-set policy, general visibility, and
 illuminated-fraction and distance extrema.
 
 ## T5: Consumers and embedding

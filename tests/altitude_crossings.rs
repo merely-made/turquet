@@ -3,15 +3,18 @@
 
 extern crate turquet;
 
+use std::f64::consts::PI;
 use std::fmt;
 
 use turquet::apparent::{ApparentBody, ApparentError, ANALYTICAL_APPARENT};
 use turquet::events::{
     airless_altitude_circumstances, airless_altitude_crossings, airless_altitude_extrema,
-    AltitudeCircumstanceSearch, AltitudeCircumstanceSearchError, AltitudeCrossingError,
-    AltitudeCrossingKind, AltitudeCrossingSearch, AltitudeCrossingSearchError,
-    AltitudeExtremumKind, AltitudeExtremumSearch, AltitudeExtremumSearchError,
-    AltitudeThresholdState, SearchWindow,
+    airless_rise_set_events, meridian_transits, AirlessRiseSetKind, AltitudeCircumstanceSearch,
+    AltitudeCircumstanceSearchError, AltitudeCrossingError, AltitudeCrossingKind,
+    AltitudeCrossingSearch, AltitudeCrossingSearchError, AltitudeExtremumKind,
+    AltitudeExtremumSearch, AltitudeExtremumSearchError, AltitudeThresholdState,
+    MeridianTransitKind, MeridianTransitSearch, MeridianTransitSearchError, SearchWindow,
+    AIRLESS_RISE_SET_NAMING, TOPOCENTRIC_MERIDIAN_TRANSIT_MODEL,
 };
 use turquet::foundation::{
     Angle, Direction, Distance, EastLongitude, JulianDate, Latitude, Length, Longitude, Model,
@@ -25,10 +28,12 @@ use turquet::provider::{
 };
 
 const HORIZONS_VECTORS: &str = include_str!("vectors/altitude_crossings_horizons.tsv");
-const HORIZONS_FIXTURE_MODEL: Model =
-    Model::new("NASA/JPL Horizons DE441 altitude fixture", "2026-08-24");
+const HORIZONS_FIXTURE_MODEL: Model = Model::new(
+    "NASA/JPL Horizons DE441 altitude and transit fixture",
+    "2026-08-25",
+);
 const HORIZONS_FIXTURE_SNAPSHOT: &str =
-    "Horizons API 1.2 / DE441 / altitude fixture generated 2026-08-24";
+    "Horizons API 1.2 / DE441 / altitude and transit fixture generated 2026-08-25";
 const HORIZONS_EOP_AUTHORITY: &str = "NASA/JPL Horizons quantity 49";
 const HORIZONS_EOP_SNAPSHOT: &str = "eop.260824.p261120; polar motion approximated as zero";
 
@@ -93,9 +98,63 @@ fn high_latitude_empty_result_makes_no_state_classification() {
 }
 
 #[test]
+fn named_airless_rise_set_remains_a_caller_threshold_projection() {
+    let fixture = HorizonsAltitudeFixture::parse();
+    let case = "boston_sun";
+    let rows = fixture.case_rows(case);
+    let first = rows[0];
+    let last = rows[rows.len() - 1];
+    let site = observer(first.longitude, first.latitude, first.height_meters);
+    let threshold = Angle::from_degrees(5.0).unwrap();
+    let window = SearchWindow::new(
+        JulianDate::from_julian_day(first.tt_day).unwrap(),
+        JulianDate::from_julian_day(last.tt_day).unwrap(),
+        1.0 / 24.0,
+        1.0 / 86_400.0,
+    )
+    .unwrap();
+    let search = AltitudeCrossingSearch::new(window, threshold).unwrap();
+    let references = direct_altitude_crossings(&rows, threshold.degrees());
+    assert_eq!(references.len(), 2);
+
+    let raw_case = fixture.for_case(case);
+    let raw = airless_altitude_crossings(&raw_case, &raw_case, site, ApparentBody::Sun, search)
+        .expect("caller-threshold airless crossings");
+    let named_case = fixture.for_case(case);
+    let named = airless_rise_set_events(&named_case, &named_case, site, ApparentBody::Sun, search)
+        .expect("caller-threshold named airless rise/set");
+
+    assert_eq!(named.len(), references.len());
+    assert_eq!(raw.len(), references.len());
+    for (index, reference) in references.iter().enumerate() {
+        let event = &named[index];
+        assert_eq!(event.crossing(), &raw[index]);
+        assert_eq!(
+            event.kind(),
+            match reference.kind {
+                AltitudeCrossingKind::Ascending => AirlessRiseSetKind::Rise,
+                AltitudeCrossingKind::Descending => AirlessRiseSetKind::Set,
+            }
+        );
+        assert_eq!(event.naming_model(), AIRLESS_RISE_SET_NAMING);
+        assert_eq!(event.crossing().threshold(), threshold);
+        let seconds =
+            (event.crossing().interval().midpoint().day() - reference.tt_day).abs() * 86_400.0;
+        eprintln!(
+            "Boston Sun {:?} at {} deg: fixture/direct {:.3} s",
+            event.kind(),
+            threshold.degrees(),
+            seconds
+        );
+        assert!(seconds <= 2.0);
+    }
+}
+
+#[test]
 fn both_position_providers_match_direct_horizons_altitude_crossings() {
     for expected in &[
         "oracle: NASA/JPL Horizons API 1.2, DE441",
+        "quantities 4,20,31,42,49",
         "five-minute UTC grid",
         "Boston Sun ordinary pair",
         "Sydney Moon ordinary pair",
@@ -132,7 +191,7 @@ fn both_position_providers_match_direct_horizons_altitude_crossings() {
         .unwrap();
         let search =
             AltitudeCrossingSearch::new(window, Angle::from_degrees(0.0).unwrap()).unwrap();
-        let references = direct_altitude_crossings(&rows);
+        let references = direct_altitude_crossings(&rows, 0.0);
         assert_eq!(references.len(), expected_crossings);
 
         let fixture_events = airless_altitude_crossings(
@@ -182,6 +241,134 @@ fn both_position_providers_match_direct_horizons_altitude_crossings() {
                 fixture_event.earth_orientation_snapshot(),
                 HORIZONS_EOP_SNAPSHOT
             );
+        }
+    }
+}
+
+#[test]
+fn both_position_providers_match_direct_horizons_meridian_transits() {
+    let fixture = HorizonsAltitudeFixture::parse();
+    for &(case, expected_body) in &[
+        ("boston_sun", ApparentBody::Sun),
+        ("sydney_moon", ApparentBody::Moon),
+        ("tromso_sun_empty", ApparentBody::Sun),
+    ] {
+        let rows = fixture.case_rows(case);
+        let first = rows[0];
+        let last = rows[rows.len() - 1];
+        let site = observer(first.longitude, first.latitude, first.height_meters);
+        let window = SearchWindow::new(
+            JulianDate::from_julian_day(first.tt_day).unwrap(),
+            JulianDate::from_julian_day(last.tt_day).unwrap(),
+            1.0 / 24.0,
+            1.0 / 86_400.0,
+        )
+        .unwrap();
+        let search = MeridianTransitSearch::new(window).unwrap();
+        let references = direct_meridian_transits(&rows);
+        assert_eq!(references.len(), 2, "{} direct transits", case);
+
+        let fixture_case = fixture.for_case(case);
+        let fixture_events =
+            meridian_transits(&fixture_case, &fixture_case, site, expected_body, search)
+                .expect("fixture-provider meridian transits");
+        let analytical_eop = fixture.for_case(case);
+        let analytical_events = meridian_transits(
+            &AnalyticalEphemeris,
+            &analytical_eop,
+            site,
+            expected_body,
+            search,
+        )
+        .expect("analytical-provider meridian transits");
+
+        assert_eq!(fixture_events.len(), references.len());
+        assert_eq!(analytical_events.len(), references.len());
+        for (index, reference) in references.iter().enumerate() {
+            let fixture_event = &fixture_events[index];
+            let analytical_event = &analytical_events[index];
+            assert_eq!(fixture_event.kind(), reference.kind);
+            assert_eq!(analytical_event.kind(), reference.kind);
+            for (lane, event) in [("fixture", fixture_event), ("analytical", analytical_event)] {
+                let seconds =
+                    (event.interval().midpoint().day() - reference.tt_day).abs() * 86_400.0;
+                eprintln!(
+                    "{} {:?} {} / direct: {:.3} s",
+                    case, reference.kind, lane, seconds
+                );
+                assert!(seconds <= 1.0);
+                assert!(event.interval().width_days() <= 1.0 / 86_400.0);
+                assert_eq!(event.body(), expected_body);
+                assert_eq!(event.observer(), site);
+                assert_eq!(event.transit_model(), TOPOCENTRIC_MERIDIAN_TRANSIT_MODEL);
+                assert_eq!(event.transform_model(), AIRLESS_TOPOCENTRIC_TRANSFORM);
+                assert_eq!(event.earth_orientation_authority(), HORIZONS_EOP_AUTHORITY);
+                assert_eq!(event.earth_orientation_snapshot(), HORIZONS_EOP_SNAPSHOT);
+            }
+            assert_eq!(fixture_event.provider_model(), HORIZONS_FIXTURE_MODEL);
+            assert_eq!(
+                fixture_event.provider_snapshot(),
+                Some(HORIZONS_FIXTURE_SNAPSHOT)
+            );
+            assert_eq!(analytical_event.provider_model(), ANALYTICAL_APPARENT);
+            assert_eq!(analytical_event.provider_snapshot(), None);
+        }
+
+        if case == "boston_sun" {
+            let lower = fixture_events
+                .iter()
+                .find(|event| event.kind() == MeridianTransitKind::Lower)
+                .expect("Boston lower transit");
+            assert!(lower.midpoint_altitude().degrees() < 0.0);
+        }
+
+        if case == "sydney_moon" {
+            let extrema_window = SearchWindow::new(
+                JulianDate::from_julian_day(first.tt_day + 5.0 / 1_440.0).unwrap(),
+                JulianDate::from_julian_day(last.tt_day - 5.0 / 1_440.0).unwrap(),
+                1.0 / 24.0,
+                1.0 / 86_400.0,
+            )
+            .unwrap();
+            let extrema_case = fixture.for_case(case);
+            let extrema = airless_altitude_extrema(
+                &extrema_case,
+                &extrema_case,
+                site,
+                expected_body,
+                AltitudeExtremumSearch::new(extrema_window, 10.0 / 1_440.0).unwrap(),
+            )
+            .expect("Sydney Moon altitude extrema");
+            let upper = fixture_events
+                .iter()
+                .find(|event| event.kind() == MeridianTransitKind::Upper)
+                .expect("Sydney upper transit");
+            let maximum = extrema
+                .iter()
+                .find(|event| event.kind() == AltitudeExtremumKind::Maximum)
+                .expect("Sydney altitude maximum");
+            let difference_seconds =
+                (upper.interval().midpoint().day() - maximum.interval().midpoint().day()).abs()
+                    * 86_400.0;
+            eprintln!(
+                "Sydney Moon upper transit differs from airless altitude maximum by {:.3} s",
+                difference_seconds
+            );
+            assert!(difference_seconds > 1.0);
+        }
+
+        if case == "tromso_sun_empty" {
+            let named_case = fixture.for_case(case);
+            let rise_set = airless_rise_set_events(
+                &named_case,
+                &named_case,
+                site,
+                expected_body,
+                AltitudeCrossingSearch::new(window, Angle::from_degrees(0.0).unwrap()).unwrap(),
+            )
+            .expect("Tromso named airless rise/set");
+            assert!(rise_set.is_empty());
+            assert_eq!(fixture_events.len(), 2);
         }
     }
 }
@@ -299,6 +486,11 @@ fn altitude_search_rejects_coarse_steps_and_nonphysical_thresholds() {
         AltitudeCrossingSearch::new(hourly, Angle::from_degrees(90.1).unwrap()).unwrap_err(),
         AltitudeCrossingSearchError::ThresholdOutOfRange
     );
+    assert_eq!(
+        MeridianTransitSearch::new(coarse).unwrap_err(),
+        MeridianTransitSearchError::StepTooLarge
+    );
+    assert_eq!(MeridianTransitSearch::new(hourly).unwrap().window(), hourly);
 }
 
 #[test]
@@ -612,6 +804,85 @@ fn altitude_search_preserves_each_error_boundary() {
     }
 }
 
+#[test]
+fn meridian_transit_preserves_each_error_boundary() {
+    let utc = ScaleAwareEpoch::from_gregorian_utc(2024, 4, 8, 0, 0, 0, 0);
+    let start = JulianDate::<TerrestrialTime>::from_epoch(utc);
+    let end = start.offset_days(1.0 / 24.0).unwrap();
+    let search = MeridianTransitSearch::new(
+        SearchWindow::new(start, end, 1.0 / 24.0, 1.0 / 86_400.0).unwrap(),
+    )
+    .unwrap();
+    let site = observer(0.0, 0.0, 0.0);
+    let orientation = constant_orientation(start, utc, 0.0);
+
+    match meridian_transits(
+        &FailingPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        search,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Position { source, .. } => {
+            assert_eq!(source, TestError("position"))
+        }
+        other => panic!("unexpected transit position error: {:?}", other),
+    }
+    match meridian_transits(
+        &AnalyticalEphemeris,
+        &FailingOrientation,
+        site,
+        ApparentBody::Sun,
+        search,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientation { source, .. } => {
+            assert_eq!(source, TestError("orientation"))
+        }
+        other => panic!("unexpected transit orientation error: {:?}", other),
+    }
+    match meridian_transits(
+        &AnalyticalEphemeris,
+        &WrongIdentityOrientation {
+            reference_epoch: start,
+            reference_ut1: JulianDate::<UniversalTime1>::from_utc_epoch(
+                utc,
+                TimeOffset::from_seconds(0.0).unwrap(),
+            ),
+        },
+        site,
+        ApparentBody::Sun,
+        search,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientationIdentityMismatch {
+            expected_authority,
+            actual_authority,
+            ..
+        } => {
+            assert_eq!(expected_authority, "declared");
+            assert_eq!(actual_authority, "returned");
+        }
+        other => panic!("unexpected transit identity error: {:?}", other),
+    }
+    match meridian_transits(
+        &WrongEpochPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        search,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Transform { .. } => {}
+        other => panic!("unexpected transit transform error: {:?}", other),
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct HorizonsAltitudeRow {
     case: &'static str,
@@ -625,6 +896,7 @@ struct HorizonsAltitudeRow {
     ecliptic_latitude: f64,
     distance_au: f64,
     direct_altitude: f64,
+    direct_local_hour_angle_hours: f64,
 }
 
 struct HorizonsAltitudeFixture {
@@ -639,7 +911,7 @@ impl HorizonsAltitudeFixture {
                 continue;
             }
             let fields: Vec<&str> = line.split('\t').collect();
-            assert_eq!(fields.len(), 9, "altitude vector column count");
+            assert_eq!(fields.len(), 10, "altitude and transit vector column count");
             let case: &'static str = match fields[0] {
                 "boston_sun" => "boston_sun",
                 "sydney_moon" => "sydney_moon",
@@ -658,7 +930,7 @@ impl HorizonsAltitudeFixture {
             };
             let utc = ScaleAwareEpoch::from_jde_utc(utc_day);
             let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
-            let dut1: f64 = fields[8].parse().expect("DUT1 seconds");
+            let dut1: f64 = fields[9].parse().expect("DUT1 seconds");
             let ut1 = JulianDate::<UniversalTime1>::from_utc_epoch(
                 utc,
                 TimeOffset::from_seconds(dut1).expect("finite DUT1"),
@@ -675,6 +947,9 @@ impl HorizonsAltitudeFixture {
                 ecliptic_latitude: fields[5].parse().expect("ecliptic latitude"),
                 distance_au: fields[6].parse().expect("range AU"),
                 direct_altitude: fields[7].parse().expect("direct altitude"),
+                direct_local_hour_angle_hours: fields[8]
+                    .parse()
+                    .expect("direct local apparent hour angle"),
             });
         }
         Self { rows }
@@ -808,17 +1083,28 @@ struct DirectAltitudeExtremum {
     altitude_degrees: f64,
 }
 
-fn direct_altitude_crossings(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitudeCrossing> {
+#[derive(Clone, Copy)]
+struct DirectMeridianTransit {
+    kind: MeridianTransitKind,
+    tt_day: f64,
+}
+
+fn direct_altitude_crossings(
+    rows: &[&HorizonsAltitudeRow],
+    threshold_degrees: f64,
+) -> Vec<DirectAltitudeCrossing> {
     let mut crossings = Vec::new();
     for pair in rows.windows(2) {
         let left = pair[0];
         let right = pair[1];
-        if left.direct_altitude.signum() == right.direct_altitude.signum() {
+        let left_value = left.direct_altitude - threshold_degrees;
+        let right_value = right.direct_altitude - threshold_degrees;
+        if left_value.signum() == right_value.signum() {
             continue;
         }
-        let fraction = -left.direct_altitude / (right.direct_altitude - left.direct_altitude);
+        let fraction = -left_value / (right_value - left_value);
         crossings.push(DirectAltitudeCrossing {
-            kind: if right.direct_altitude > 0.0 {
+            kind: if right_value > 0.0 {
                 AltitudeCrossingKind::Ascending
             } else {
                 AltitudeCrossingKind::Descending
@@ -827,6 +1113,33 @@ fn direct_altitude_crossings(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitud
         });
     }
     crossings
+}
+
+fn direct_meridian_transits(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectMeridianTransit> {
+    let mut transits = Vec::new();
+    for pair in rows.windows(2) {
+        let left = pair[0];
+        let right = pair[1];
+        let left_hour_angle = left.direct_local_hour_angle_hours * PI / 12.0;
+        let right_hour_angle = right.direct_local_hour_angle_hours * PI / 12.0;
+        let left_value = left_hour_angle.sin();
+        let right_value = right_hour_angle.sin();
+        if left_value.signum() == right_value.signum() {
+            continue;
+        }
+        let fraction = -left_value / (right_value - left_value);
+        let hour_angle_delta = (right_hour_angle - left_hour_angle + PI).rem_euclid(2.0 * PI) - PI;
+        let root_hour_angle = left_hour_angle + fraction * hour_angle_delta;
+        transits.push(DirectMeridianTransit {
+            kind: if root_hour_angle.cos() > 0.0 {
+                MeridianTransitKind::Upper
+            } else {
+                MeridianTransitKind::Lower
+            },
+            tt_day: left.tt_day + fraction * (right.tt_day - left.tt_day),
+        });
+    }
+    transits
 }
 
 fn direct_altitude_extrema(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitudeExtremum> {

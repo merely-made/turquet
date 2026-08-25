@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.10.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.11.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -62,12 +62,14 @@ that approximation. The regeneration script is
 ## Event verification
 
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
-geocentric positions, DUT1, and direct topocentric airless elevations from
-NASA/JPL Horizons API 1.2 and DE441. It covers ordinary Boston Sun and Sydney
-Moon crossing pairs plus a Tromso midsummer Sun empty control. Horizons
-quantity 4 defines topocentric azimuth and elevation, and
-`APPARENT=AIRLESS` omits atmospheric refraction. Horizons applies polar
-motion from EOP snapshot `eop.260824.p261120`; the Turquet test records its
+geocentric positions, DUT1, direct topocentric airless elevations, and direct
+local apparent hour angles from NASA/JPL Horizons API 1.2 and DE441. It covers
+ordinary Boston Sun and Sydney Moon crossing pairs plus a Tromso midsummer Sun
+empty control. Quantity 4 defines topocentric azimuth/elevation, quantity 42
+defines signed local apparent hour angle in decimal angular hours, quantity 49
+supplies DUT1, and
+`APPARENT=AIRLESS` omits atmospheric refraction. Horizons applies polar motion
+from EOP snapshot `eop.260824.p261120`; the Turquet fixture records its
 zero-polar-motion approximation while interpolating DUT1 at every TT request.
 Regenerate the 867 rows with
 `scripts/fetch_horizons_altitude_crossing_vectors.ps1`. The official quantity
@@ -81,6 +83,15 @@ row and its immediate neighbors. This derives a sub-sample reference from the
 external altitude facts; it does not pass Turquet positions, transforms, or
 the central-difference solver through the reference path. No additional
 source fixture is introduced for the T4g evidence.
+
+The T4h transit reference derives `sin(hour angle)` roots and `cos(hour
+angle)` upper/lower classification directly from the quantity-42 samples. It
+interpolates the shortest signed angular change across the signed-hour-angle
+wrap, rather than reconstructing right ascension or passing a Turquet
+transform through the reference path. Turquet's local meridian itself is
+formed from IAU 2006/2000A GAST and `sofars`/SOFA `apio`'s
+TIO-and-polar-motion-adjusted longitude. The canonical IAU SOFA 2023
+`iauApio` validation vector is a unit control for that seam.
 
 `tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
 Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23

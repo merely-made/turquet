@@ -14,12 +14,13 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.10.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.11.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
 lunar eclipse circumstances, plus observer-relative airless altitude
-crossings, extrema, and sampled threshold circumstances.
+crossings, named caller-threshold rise/set facts, extrema, sampled threshold
+circumstances, and separate upper/lower meridian transits.
 The original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
@@ -79,6 +80,11 @@ eclipse and the P1/P4, U1/U4, and U2/U3 contacts appropriate to penumbral,
 partial, and total events. Every landed algorithm is exercised with the
 analytical engine and committed NASA/JPL Horizons facts; geocentric families
 also run through a live caller-supplied JPL SPK kernel in the opt-in verifier.
+Airless `Rise` and `Set` name only a caller-selected center-altitude crossing:
+they do not select refraction, limb, horizon, terrain, civil, or visibility
+policy. Meridian transits are separate roots of topocentric apparent local
+hour angle, using the polar-motion-adjusted local meridian; an upper or lower
+transit can occur below the horizon.
 
 ## Direction
 
@@ -141,9 +147,9 @@ correction.
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. T4 still
-has open slices for named rise/set and transit policy, observer-relative solar
-contacts and eclipse visibility, general visibility, and illuminated-fraction
-or distance extrema.
+has open slices for conventional refraction/limb/horizon rise-set policy,
+observer-relative solar contacts and eclipse visibility, general visibility,
+and illuminated-fraction or distance extrema.
 
 ## Verification
 
