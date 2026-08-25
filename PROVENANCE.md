@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.9.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.10.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -73,6 +73,14 @@ Regenerate the 867 rows with
 `scripts/fetch_horizons_altitude_crossing_vectors.ps1`. The official quantity
 definitions are in the Horizons manual:
 <https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+The altitude-extremum evidence reuses these direct five-minute airless
+elevations. For every sampled minimum or maximum, the independent reference
+time and altitude are the vertex of the parabola through the direct Horizons
+row and its immediate neighbors. This derives a sub-sample reference from the
+external altitude facts; it does not pass Turquet positions, transforms, or
+the central-difference solver through the reference path. No additional
+source fixture is introduced for the T4g evidence.
 
 `tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
 Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23

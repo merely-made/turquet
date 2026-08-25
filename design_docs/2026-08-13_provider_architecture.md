@@ -221,3 +221,20 @@ ceiling bounds the first contract, while an empty result remains only an
 absence of sampled sign changes. Named rise/set policy, transit, grazing and
 persistent-state classification, refraction, horizon dip, terrain, and limb
 selection remain later layers.
+
+## T4g addendum: 2026-08-24
+
+Airless altitude extrema are now sampled roots of a caller-selected central
+difference. The full derivative span is validated, retained in every result,
+and may cause provider requests up to half that span beyond the selected
+search window. Roots are bracketed by altitude-motion reversal and refined by
+bisection; midpoint altitude is an estimate, not an angular error bound.
+
+`airless_altitude_circumstances` shares its altitude samples between crossing
+and threshold-state work and reuses its refined extrema. Its state vocabulary
+is deliberately evidence-scoped: crossing, grazing candidate, above or below
+at all evaluated samples, or unresolved. Finite calls through a black-box
+position provider do not establish a persistent or circumpolar state.
+Meridian transit remains separate because it is an hour-angle event, not an
+altitude-extremum synonym. Refraction, horizon policy, and named rise/set also
+remain consumer-facing layers over these airless facts.

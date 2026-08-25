@@ -184,10 +184,24 @@ Horizons airless altitude roots for Boston Sun and Sydney Moon pairs within
 0.232 seconds; a Tromso midsummer Sun case is the empty control. See
 `receipts/2026-08-24_t4f_airless_altitude_crossings.md`.
 
+**Seventh slice completed 2026-08-24.** `events` now finds sampled,
+bracketed roots of a caller-selected central difference of airless altitude.
+Each minimum or maximum is a bounded TT interval with midpoint altitude,
+derivative span, observer, ephemeris identity, transform revision, and
+Earth-orientation identity. A combined circumstance search reuses its
+crossing samples and classifies only what the sampled/refined facts support:
+crossings, a tolerance-based grazing candidate, above or below at all samples,
+or unresolved. It deliberately avoids persistent, always-visible, and
+circumpolar claims. Boston Sun, Sydney Moon, and Tromso Sun extrema run through
+both analytical and committed DE441/Horizons position lanes. Against
+three-point parabolic references derived from direct five-minute Horizons
+airless elevations, the measured worst residual is 0.454 seconds in time and
+0.000244 degrees in altitude. See
+`receipts/2026-08-24_t4g_altitude_circumstances.md`.
+
 T4 remains open for observer-relative solar contacts and eclipse visibility,
-named rise/set and transit policy, grazing and persistent altitude
-classification, general visibility, and illuminated-fraction and distance
-extrema.
+named rise/set and transit policy, general visibility, and
+illuminated-fraction and distance extrema.
 
 ## T5: Consumers and embedding
 

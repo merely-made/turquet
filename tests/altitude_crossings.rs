@@ -7,8 +7,11 @@ use std::fmt;
 
 use turquet::apparent::{ApparentBody, ApparentError, ANALYTICAL_APPARENT};
 use turquet::events::{
-    airless_altitude_crossings, AltitudeCrossingError, AltitudeCrossingKind,
-    AltitudeCrossingSearch, AltitudeCrossingSearchError, SearchWindow,
+    airless_altitude_circumstances, airless_altitude_crossings, airless_altitude_extrema,
+    AltitudeCircumstanceSearch, AltitudeCircumstanceSearchError, AltitudeCrossingError,
+    AltitudeCrossingKind, AltitudeCrossingSearch, AltitudeCrossingSearchError,
+    AltitudeExtremumKind, AltitudeExtremumSearch, AltitudeExtremumSearchError,
+    AltitudeThresholdState, SearchWindow,
 };
 use turquet::foundation::{
     Angle, Direction, Distance, EastLongitude, JulianDate, Latitude, Length, Longitude, Model,
@@ -184,6 +187,104 @@ fn both_position_providers_match_direct_horizons_altitude_crossings() {
 }
 
 #[test]
+fn both_position_providers_match_direct_horizons_altitude_extrema() {
+    let fixture = HorizonsAltitudeFixture::parse();
+    for &(case, expected_body, expected_state) in &[
+        ("boston_sun", ApparentBody::Sun, "crosses"),
+        ("sydney_moon", ApparentBody::Moon, "crosses"),
+        ("tromso_sun_empty", ApparentBody::Sun, "above"),
+    ] {
+        let rows = fixture.case_rows(case);
+        let first = rows[0];
+        let last = rows[rows.len() - 1];
+        let observer = observer(first.longitude, first.latitude, first.height_meters);
+        let window = SearchWindow::new(
+            JulianDate::from_julian_day(first.tt_day + 5.0 / 1_440.0).unwrap(),
+            JulianDate::from_julian_day(last.tt_day - 5.0 / 1_440.0).unwrap(),
+            1.0 / 24.0,
+            1.0 / 86_400.0,
+        )
+        .unwrap();
+        let extrema_search = AltitudeExtremumSearch::new(window, 10.0 / 1_440.0).unwrap();
+        let search = AltitudeCircumstanceSearch::new(
+            extrema_search,
+            Angle::from_degrees(0.0).unwrap(),
+            Angle::from_degrees(0.01).unwrap(),
+        )
+        .unwrap();
+        let references = direct_altitude_extrema(&rows);
+        assert_eq!(references.len(), 2);
+
+        let fixture_case = fixture.for_case(case);
+        let fixture_result = airless_altitude_circumstances(
+            &fixture_case,
+            &fixture_case,
+            observer,
+            expected_body,
+            search,
+        )
+        .expect("fixture-provider altitude circumstances");
+        let analytical_eop = fixture.for_case(case);
+        let analytical_result = airless_altitude_circumstances(
+            &AnalyticalEphemeris,
+            &analytical_eop,
+            observer,
+            expected_body,
+            search,
+        )
+        .expect("analytical-provider altitude circumstances");
+
+        assert_eq!(fixture_result.extrema().len(), 2);
+        assert_eq!(analytical_result.extrema().len(), 2);
+        assert_threshold_state(fixture_result.state(), expected_state);
+        assert_threshold_state(analytical_result.state(), expected_state);
+        for (index, reference) in references.iter().enumerate() {
+            for (lane, event) in [
+                ("fixture", &fixture_result.extrema()[index]),
+                ("analytical", &analytical_result.extrema()[index]),
+            ] {
+                assert_eq!(event.kind(), reference.kind);
+                assert!(event.interval().width_days() <= 1.0 / 86_400.0);
+                let time_residual =
+                    (event.interval().midpoint().day() - reference.tt_day).abs() * 86_400.0;
+                let altitude_residual =
+                    (event.midpoint_altitude().degrees() - reference.altitude_degrees).abs();
+                eprintln!(
+                    "{} {:?} {}: direct time {:.3} s; altitude {:.6} deg",
+                    case, reference.kind, lane, time_residual, altitude_residual
+                );
+                assert!(time_residual <= 1.0);
+                assert!(altitude_residual <= 0.001);
+                assert_eq!(event.derivative_span_days(), 10.0 / 1_440.0);
+                assert_eq!(event.transform_model(), AIRLESS_TOPOCENTRIC_TRANSFORM);
+                assert_eq!(event.earth_orientation_authority(), HORIZONS_EOP_AUTHORITY);
+                assert_eq!(event.earth_orientation_snapshot(), HORIZONS_EOP_SNAPSHOT);
+            }
+        }
+        assert_eq!(fixture_result.provider_model(), HORIZONS_FIXTURE_MODEL);
+        assert_eq!(
+            fixture_result.provider_snapshot(),
+            Some(HORIZONS_FIXTURE_SNAPSHOT)
+        );
+        assert_eq!(analytical_result.provider_model(), ANALYTICAL_APPARENT);
+        assert_eq!(analytical_result.provider_snapshot(), None);
+
+        if case == "boston_sun" {
+            let standalone_case = fixture.for_case(case);
+            let standalone = airless_altitude_extrema(
+                &standalone_case,
+                &standalone_case,
+                observer,
+                expected_body,
+                extrema_search,
+            )
+            .expect("standalone altitude extrema");
+            assert_eq!(standalone, fixture_result.extrema());
+        }
+    }
+}
+
+#[test]
 fn altitude_search_rejects_coarse_steps_and_nonphysical_thresholds() {
     let start = JulianDate::<TerrestrialTime>::from_julian_day(2_460_000.0).unwrap();
     let end = start.offset_days(1.0).unwrap();
@@ -198,6 +299,112 @@ fn altitude_search_rejects_coarse_steps_and_nonphysical_thresholds() {
         AltitudeCrossingSearch::new(hourly, Angle::from_degrees(90.1).unwrap()).unwrap_err(),
         AltitudeCrossingSearchError::ThresholdOutOfRange
     );
+}
+
+#[test]
+fn altitude_extremum_and_circumstance_searches_reject_unsafe_controls() {
+    let start = JulianDate::<TerrestrialTime>::from_julian_day(2_460_000.0).unwrap();
+    let end = start.offset_days(1.0).unwrap();
+    let coarse = SearchWindow::new(start, end, 2.0 / 24.0, 1.0 / 86_400.0).unwrap();
+    assert_eq!(
+        AltitudeExtremumSearch::new(coarse, 10.0 / 1_440.0).unwrap_err(),
+        AltitudeExtremumSearchError::StepTooLarge
+    );
+    let hourly = SearchWindow::new(start, end, 1.0 / 24.0, 1.0 / 86_400.0).unwrap();
+    assert_eq!(
+        AltitudeExtremumSearch::new(hourly, f64::NAN).unwrap_err(),
+        AltitudeExtremumSearchError::DerivativeSpanNotFinite
+    );
+    assert_eq!(
+        AltitudeExtremumSearch::new(hourly, 0.0).unwrap_err(),
+        AltitudeExtremumSearchError::DerivativeSpanNotPositive
+    );
+    assert_eq!(
+        AltitudeExtremumSearch::new(hourly, 2.0 / 24.0).unwrap_err(),
+        AltitudeExtremumSearchError::DerivativeSpanTooLarge
+    );
+    let extrema = AltitudeExtremumSearch::new(hourly, 10.0 / 1_440.0).unwrap();
+    assert_eq!(
+        AltitudeCircumstanceSearch::new(
+            extrema,
+            Angle::from_degrees(90.1).unwrap(),
+            Angle::from_degrees(0.01).unwrap(),
+        )
+        .unwrap_err(),
+        AltitudeCircumstanceSearchError::ThresholdOutOfRange
+    );
+    assert_eq!(
+        AltitudeCircumstanceSearch::new(
+            extrema,
+            Angle::from_degrees(0.0).unwrap(),
+            Angle::from_degrees(0.0).unwrap(),
+        )
+        .unwrap_err(),
+        AltitudeCircumstanceSearchError::AltitudeToleranceNotPositive
+    );
+}
+
+#[test]
+fn sampled_state_distinguishes_below_and_grazing_candidate() {
+    let fixture = HorizonsAltitudeFixture::parse();
+    let case = "tromso_sun_empty";
+    let rows = fixture.case_rows(case);
+    let first = rows[0];
+    let last = rows[rows.len() - 1];
+    let site = observer(first.longitude, first.latitude, first.height_meters);
+    let window = SearchWindow::new(
+        JulianDate::from_julian_day(first.tt_day + 5.0 / 1_440.0).unwrap(),
+        JulianDate::from_julian_day(last.tt_day - 5.0 / 1_440.0).unwrap(),
+        1.0 / 24.0,
+        1.0 / 86_400.0,
+    )
+    .unwrap();
+    let extrema = AltitudeExtremumSearch::new(window, 10.0 / 1_440.0).unwrap();
+
+    let below_case = fixture.for_case(case);
+    let below = airless_altitude_circumstances(
+        &below_case,
+        &below_case,
+        site,
+        ApparentBody::Sun,
+        AltitudeCircumstanceSearch::new(
+            extrema,
+            Angle::from_degrees(80.0).unwrap(),
+            Angle::from_degrees(0.01).unwrap(),
+        )
+        .unwrap(),
+    )
+    .expect("sampled-below Tromso case");
+    assert!(matches!(
+        below.state(),
+        AltitudeThresholdState::BelowAtAllSamples { .. }
+    ));
+
+    let direct_minimum = direct_altitude_extrema(&rows)
+        .into_iter()
+        .find(|event| event.kind == AltitudeExtremumKind::Minimum)
+        .expect("direct minimum");
+    let grazing_case = fixture.for_case(case);
+    let grazing = airless_altitude_circumstances(
+        &grazing_case,
+        &grazing_case,
+        site,
+        ApparentBody::Sun,
+        AltitudeCircumstanceSearch::new(
+            extrema,
+            Angle::from_degrees(direct_minimum.altitude_degrees).unwrap(),
+            Angle::from_degrees(0.01).unwrap(),
+        )
+        .unwrap(),
+    )
+    .expect("Tromso grazing candidate");
+    match grazing.state() {
+        AltitudeThresholdState::GrazingCandidate { extremum, offset } => {
+            assert_eq!(extremum.kind(), AltitudeExtremumKind::Minimum);
+            assert!(offset.degrees().abs() <= 0.01);
+        }
+        other => panic!("expected grazing candidate, got {:?}", other),
+    }
 }
 
 #[test]
@@ -277,6 +484,131 @@ fn altitude_search_preserves_each_error_boundary() {
     {
         AltitudeCrossingError::Transform { .. } => {}
         other => panic!("unexpected transform error: {:?}", other),
+    }
+
+    let extrema = AltitudeExtremumSearch::new(window, 10.0 / 1_440.0).unwrap();
+    match airless_altitude_extrema(
+        &FailingPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        extrema,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Position { source, .. } => {
+            assert_eq!(source, TestError("position"))
+        }
+        other => panic!("unexpected extremum position error: {:?}", other),
+    }
+    match airless_altitude_extrema(
+        &AnalyticalEphemeris,
+        &FailingOrientation,
+        site,
+        ApparentBody::Sun,
+        extrema,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientation { source, .. } => {
+            assert_eq!(source, TestError("orientation"))
+        }
+        other => panic!("unexpected extremum orientation error: {:?}", other),
+    }
+    match airless_altitude_extrema(
+        &AnalyticalEphemeris,
+        &WrongIdentityOrientation {
+            reference_epoch: start,
+            reference_ut1: JulianDate::<UniversalTime1>::from_utc_epoch(
+                utc,
+                TimeOffset::from_seconds(0.0).unwrap(),
+            ),
+        },
+        site,
+        ApparentBody::Sun,
+        extrema,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientationIdentityMismatch { .. } => {}
+        other => panic!("unexpected extremum identity error: {:?}", other),
+    }
+    match airless_altitude_extrema(
+        &WrongEpochPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        extrema,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Transform { .. } => {}
+        other => panic!("unexpected extremum transform error: {:?}", other),
+    }
+
+    let circumstances = AltitudeCircumstanceSearch::new(
+        extrema,
+        Angle::from_degrees(0.0).unwrap(),
+        Angle::from_degrees(0.01).unwrap(),
+    )
+    .unwrap();
+    match airless_altitude_circumstances(
+        &FailingPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        circumstances,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Position { source, .. } => {
+            assert_eq!(source, TestError("position"))
+        }
+        other => panic!("unexpected circumstance position error: {:?}", other),
+    }
+    match airless_altitude_circumstances(
+        &AnalyticalEphemeris,
+        &FailingOrientation,
+        site,
+        ApparentBody::Sun,
+        circumstances,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientation { source, .. } => {
+            assert_eq!(source, TestError("orientation"))
+        }
+        other => panic!("unexpected circumstance orientation error: {:?}", other),
+    }
+    match airless_altitude_circumstances(
+        &AnalyticalEphemeris,
+        &WrongIdentityOrientation {
+            reference_epoch: start,
+            reference_ut1: JulianDate::<UniversalTime1>::from_utc_epoch(
+                utc,
+                TimeOffset::from_seconds(0.0).unwrap(),
+            ),
+        },
+        site,
+        ApparentBody::Sun,
+        circumstances,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::EarthOrientationIdentityMismatch { .. } => {}
+        other => panic!("unexpected circumstance identity error: {:?}", other),
+    }
+    match airless_altitude_circumstances(
+        &WrongEpochPosition,
+        &orientation,
+        site,
+        ApparentBody::Sun,
+        circumstances,
+    )
+    .unwrap_err()
+    {
+        AltitudeCrossingError::Transform { .. } => {}
+        other => panic!("unexpected circumstance transform error: {:?}", other),
     }
 }
 
@@ -469,6 +801,13 @@ struct DirectAltitudeCrossing {
     tt_day: f64,
 }
 
+#[derive(Clone, Copy)]
+struct DirectAltitudeExtremum {
+    kind: AltitudeExtremumKind,
+    tt_day: f64,
+    altitude_degrees: f64,
+}
+
 fn direct_altitude_crossings(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitudeCrossing> {
     let mut crossings = Vec::new();
     for pair in rows.windows(2) {
@@ -488,6 +827,48 @@ fn direct_altitude_crossings(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitud
         });
     }
     crossings
+}
+
+fn direct_altitude_extrema(rows: &[&HorizonsAltitudeRow]) -> Vec<DirectAltitudeExtremum> {
+    let mut extrema = Vec::new();
+    for triple in rows.windows(3) {
+        let left = triple[0];
+        let middle = triple[1];
+        let right = triple[2];
+        let kind = if middle.direct_altitude > left.direct_altitude
+            && middle.direct_altitude > right.direct_altitude
+        {
+            AltitudeExtremumKind::Maximum
+        } else if middle.direct_altitude < left.direct_altitude
+            && middle.direct_altitude < right.direct_altitude
+        {
+            AltitudeExtremumKind::Minimum
+        } else {
+            continue;
+        };
+        let denominator =
+            left.direct_altitude + right.direct_altitude - 2.0 * middle.direct_altitude;
+        let offset_samples = (left.direct_altitude - right.direct_altitude) / (2.0 * denominator);
+        let sample_days = right.tt_day - middle.tt_day;
+        let altitude = middle.direct_altitude
+            - (right.direct_altitude - left.direct_altitude)
+                * (right.direct_altitude - left.direct_altitude)
+                / (8.0 * denominator);
+        extrema.push(DirectAltitudeExtremum {
+            kind,
+            tt_day: middle.tt_day + offset_samples * sample_days,
+            altitude_degrees: altitude,
+        });
+    }
+    extrema
+}
+
+fn assert_threshold_state(state: &AltitudeThresholdState, expected: &str) {
+    match (state, expected) {
+        (AltitudeThresholdState::Crosses, "crosses") => {}
+        (AltitudeThresholdState::AboveAtAllSamples { .. }, "above") => {}
+        _ => panic!("expected {} sampled state, got {:?}", expected, state),
+    }
 }
 
 fn signed_degrees(angle: f64) -> f64 {

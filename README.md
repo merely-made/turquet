@@ -14,12 +14,12 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.9.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.10.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
 lunar eclipse circumstances, plus observer-relative airless altitude
-crossings.
+crossings, extrema, and sampled threshold circumstances.
 The original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
@@ -63,18 +63,22 @@ and a high-latitude site.
 
 The T4 event API uses `GeocentricPositionProvider` for apparent
 ecliptic-longitude conjunctions, stationary points, lunar quarter phases,
-eclipses, and observer-relative altitude crossings. Altitude searches compose
+eclipses, and observer-relative altitude events. Altitude searches compose
 that provider with an epoch-indexed `EarthOrientationProvider` and the same
-WGS84 airless transform used by `ObserverSky`. Search controls are explicit,
-and results are bounded TT intervals carrying position, transform, and
-Earth-orientation identities. Eclipse results retain a named spherical
-geometry revision and the terms that decide their class. Solar candidates
-mean a global alignment is possible after observer parallax; local type and
-visibility are not inferred. Lunar searches refine greatest eclipse and the
-P1/P4, U1/U4, and U2/U3 contacts appropriate to penumbral, partial, and total
-events. Every landed algorithm is exercised with the analytical engine and
-committed NASA/JPL Horizons facts; geocentric families also run through a live
-caller-supplied JPL SPK kernel in the opt-in verifier.
+WGS84 airless transform used by `ObserverSky`. They return sign-changing
+crossings plus sampled, bracketed roots of an explicit central-difference
+altitude derivative. A combined circumstance result distinguishes crossings,
+tolerance-based grazing candidates, sampled above/below states, and unresolved
+near-threshold cases without claiming continuous proof between samples.
+Search controls are explicit, and results are bounded TT intervals carrying
+position, transform, and Earth-orientation identities. Eclipse results retain
+a named spherical geometry revision and the terms that decide their class.
+Solar candidates mean a global alignment is possible after observer parallax;
+local type and visibility are not inferred. Lunar searches refine greatest
+eclipse and the P1/P4, U1/U4, and U2/U3 contacts appropriate to penumbral,
+partial, and total events. Every landed algorithm is exercised with the
+analytical engine and committed NASA/JPL Horizons facts; geocentric families
+also run through a live caller-supplied JPL SPK kernel in the opt-in verifier.
 
 ## Direction
 
@@ -137,9 +141,9 @@ correction.
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. T4 still
-has open slices for named rise/set policies, transit, grazing and persistent
-altitude classification, observer-relative solar contacts and eclipse
-visibility, general visibility, and extrema.
+has open slices for named rise/set and transit policy, observer-relative solar
+contacts and eclipse visibility, general visibility, and illuminated-fraction
+or distance extrema.
 
 ## Verification
 

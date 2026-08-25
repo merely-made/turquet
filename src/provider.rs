@@ -13,7 +13,9 @@ use observer::EarthOrientation;
 ///
 /// Event algorithms depend on this contract rather than on Turquet's
 /// analytical implementation. Provider errors retain range and data-source
-/// failures instead of being flattened into an absent event.
+/// failures instead of being flattened into an absent event. Within one
+/// calculation, repeated requests for the same body and TT epoch must return
+/// the same state or error while `model()` and `data_snapshot()` are unchanged.
 pub trait GeocentricPositionProvider {
     type Error;
 
@@ -38,7 +40,8 @@ pub trait GeocentricPositionProvider {
 ///
 /// A provider instance has one immutable authority and data snapshot. Its
 /// returned [`EarthOrientation`] must carry the same identity, while UT1 and
-/// polar motion correspond to the requested TT epoch.
+/// polar motion correspond to the requested TT epoch. Within one calculation,
+/// repeated requests for the same TT epoch must return the same facts or error.
 pub trait EarthOrientationProvider {
     type Error;
 
