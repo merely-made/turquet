@@ -14,7 +14,7 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.11.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.12.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
@@ -85,6 +85,14 @@ they do not select refraction, limb, horizon, terrain, civil, or visibility
 policy. Meridian transits are separate roots of topocentric apparent local
 hour angle, using the polar-motion-adjusted local meridian; an upper or lower
 transit can occur below the horizon.
+`conventional_rise_set_events` is a separate caller-composed contract: it
+solves airless center altitude plus a fixed target refraction, selected upper
+limb, and selected horizon dip. Its result retains the complete policy. The
+USNO standard helpers select fixed 34-arcminute refraction and a fixed
+16-arcminute solar upper limb; a physical-radius limb instead uses the
+topocentric range and therefore adds no second lunar horizontal parallax.
+Altitude-dependent meteorological refraction, terrain, obstruction, civil-day,
+and visibility policy remain open.
 
 ## Direction
 
@@ -147,9 +155,11 @@ correction.
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. T4 still
-has open slices for conventional refraction/limb/horizon rise-set policy,
-observer-relative solar contacts and eclipse visibility, general visibility,
-and illuminated-fraction or distance extrema.
+has bounded open slices for observer-relative solar contacts and local eclipse
+visibility, illuminated-fraction and distance facts/extrema, named twilight,
+and consumer-forced visibility windows. The first acceptance consumer is a
+Sky-home daily timeline; Cleromancy and an embedded solar-tracker profile
+follow the remaining event slices.
 
 ## Verification
 

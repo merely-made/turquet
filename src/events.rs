@@ -6,9 +6,9 @@
 //! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
 //! stationary points, lunar quarter phases, eclipse candidates, lunar eclipse
 //! circumstances, airless observer-altitude crossings and extrema, sampled
-//! altitude-threshold circumstances, airless rise/set naming, and topocentric
-//! meridian transits. Every event result is a bounded TT interval, not an
-//! isolated floating-point instant.
+//! altitude-threshold circumstances, airless and caller-composed conventional
+//! rise/set naming, and topocentric meridian transits. Every event result is a
+//! bounded TT interval, not an isolated floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
@@ -83,6 +83,33 @@ pub const SPHERICAL_ECLIPSE_GEOMETRY: Model =
 /// obstruction, civil convention, and visibility policy.
 pub const AIRLESS_RISE_SET_NAMING: Model =
     Model::new("caller-threshold airless center rise/set naming", "1");
+
+/// Composition model for conventional observer-relative rise and set events.
+///
+/// The selected refraction, limb, and horizon-dip models remain separate in
+/// each result. Turquet does not select a civil, terrain, obstruction, or
+/// visibility convention.
+pub const CONVENTIONAL_RISE_SET_CIRCUMSTANCES: Model =
+    Model::new("caller-composed conventional rise/set circumstances", "1");
+
+/// A model which applies no atmospheric refraction at the selected crossing.
+pub const NO_REFRACTION: Model = Model::new("no atmospheric refraction", "1");
+
+/// USNO's fixed 34-arcminute standard-horizon refraction convention.
+pub const USNO_STANDARD_REFRACTION: Model =
+    Model::new("USNO standard-horizon fixed refraction", "2026-08-25");
+
+/// USNO's fixed 16-arcminute average upper solar-limb convention.
+pub const USNO_STANDARD_SOLAR_LIMB: Model = Model::new(
+    "USNO standard-horizon average solar upper limb",
+    "2026-08-25",
+);
+
+/// A model which selects the body's center rather than either limb.
+pub const CENTER_LIMB: Model = Model::new("center limb selection", "1");
+
+/// A model which takes the observer's astronomical horizon as level.
+pub const LEVEL_HORIZON_DIP: Model = Model::new("level astronomical horizon", "1");
 
 /// Topocentric apparent local-meridian event model.
 pub const TOPOCENTRIC_MERIDIAN_TRANSIT_MODEL: Model =
@@ -220,6 +247,301 @@ impl fmt::Display for AltitudeCrossingSearchError {
 }
 
 impl ::std::error::Error for AltitudeCrossingSearchError {}
+
+/// Validated controls for a conventional rise/set search.
+///
+/// Conventional circumstances solve the selected policy directly, so they do
+/// not take a caller altitude threshold. The airless center altitude at the
+/// event can vary with a physical-radius limb model.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConventionalRiseSetSearch {
+    window: SearchWindow,
+}
+
+impl ConventionalRiseSetSearch {
+    pub fn new(window: SearchWindow) -> Result<Self, ConventionalRiseSetSearchError> {
+        if window.step_days() > MAX_ALTITUDE_CROSSING_STEP_DAYS {
+            return Err(ConventionalRiseSetSearchError::StepTooLarge);
+        }
+        Ok(Self { window })
+    }
+
+    pub fn window(self) -> SearchWindow {
+        self.window
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConventionalRiseSetSearchError {
+    StepTooLarge,
+}
+
+impl fmt::Display for ConventionalRiseSetSearchError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ConventionalRiseSetSearchError::StepTooLarge => {
+                formatter.write_str("conventional rise/set search step exceeds one TT hour")
+            }
+        }
+    }
+}
+
+impl ::std::error::Error for ConventionalRiseSetSearchError {}
+
+/// A constant apparent lift applied to the airless center altitude.
+///
+/// The value is evaluated at the event rather than inferred from weather. A
+/// caller can supply zero through [`RefractionModel::none`] or name and select
+/// a published fixed-target refraction convention through [`RefractionModel::constant`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RefractionModel {
+    apparent_lift: Angle,
+    model: Model,
+}
+
+impl RefractionModel {
+    pub fn none() -> Self {
+        Self {
+            apparent_lift: Angle::from_radians(0.0).expect("zero is a finite angle"),
+            model: NO_REFRACTION,
+        }
+    }
+
+    pub fn constant(
+        apparent_lift: Angle,
+        model: Model,
+    ) -> Result<Self, ConventionalRiseSetPolicyError> {
+        if apparent_lift.radians() < 0.0 || apparent_lift.radians() > PI / 2.0 {
+            return Err(ConventionalRiseSetPolicyError::RefractionOutOfRange);
+        }
+        Ok(Self {
+            apparent_lift,
+            model,
+        })
+    }
+
+    /// USNO's 34-arcminute fixed refraction used in its standard sea-level
+    /// Sun and Moon rise/set convention.
+    pub fn usno_standard() -> Self {
+        Self {
+            apparent_lift: Angle::from_arcseconds(34.0 * 60.0)
+                .expect("34 arcminutes is a finite angle"),
+            model: USNO_STANDARD_REFRACTION,
+        }
+    }
+
+    pub fn apparent_lift(self) -> Angle {
+        self.apparent_lift
+    }
+
+    pub fn model(self) -> Model {
+        self.model
+    }
+}
+
+/// Which apparent limb is selected at the conventional horizon.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LimbModel {
+    kind: LimbModelKind,
+    model: Model,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum LimbModelKind {
+    Center,
+    UpperAngularRadius(Angle),
+    UpperPhysicalRadius(Distance),
+}
+
+impl LimbModel {
+    pub fn center() -> Self {
+        Self {
+            kind: LimbModelKind::Center,
+            model: CENTER_LIMB,
+        }
+    }
+
+    pub fn upper_physical_radius(
+        physical_radius: Distance,
+        model: Model,
+    ) -> Result<Self, ConventionalRiseSetPolicyError> {
+        if physical_radius.meters() <= 0.0 {
+            return Err(ConventionalRiseSetPolicyError::LimbRadiusNotPositive);
+        }
+        Ok(Self {
+            kind: LimbModelKind::UpperPhysicalRadius(physical_radius),
+            model,
+        })
+    }
+
+    pub fn upper_angular_radius(
+        angular_radius: Angle,
+        model: Model,
+    ) -> Result<Self, ConventionalRiseSetPolicyError> {
+        if angular_radius.radians() <= 0.0 || angular_radius.radians() > PI / 2.0 {
+            return Err(ConventionalRiseSetPolicyError::LimbAngularRadiusOutOfRange);
+        }
+        Ok(Self {
+            kind: LimbModelKind::UpperAngularRadius(angular_radius),
+            model,
+        })
+    }
+
+    /// USNO's fixed 16-arcminute average upper solar-limb convention.
+    pub fn usno_standard_solar() -> Self {
+        Self::upper_angular_radius(
+            Angle::from_arcseconds(16.0 * 60.0).expect("16 arcminutes is a finite angle"),
+            USNO_STANDARD_SOLAR_LIMB,
+        )
+        .expect("16 arcminutes is a positive upper-limb angle")
+    }
+
+    pub fn model(self) -> Model {
+        self.model
+    }
+
+    pub fn physical_radius(self) -> Option<Distance> {
+        match self.kind {
+            LimbModelKind::UpperPhysicalRadius(physical_radius) => Some(physical_radius),
+            LimbModelKind::Center | LimbModelKind::UpperAngularRadius(_) => None,
+        }
+    }
+
+    pub fn angular_radius(self) -> Option<Angle> {
+        match self.kind {
+            LimbModelKind::UpperAngularRadius(angular_radius) => Some(angular_radius),
+            LimbModelKind::Center | LimbModelKind::UpperPhysicalRadius(_) => None,
+        }
+    }
+}
+
+/// The selected depression of the visible horizon below the astronomical one.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HorizonDipModel {
+    kind: HorizonDipModelKind,
+    model: Model,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum HorizonDipModelKind {
+    Level,
+    Constant(Angle),
+    Spherical(Distance),
+}
+
+impl HorizonDipModel {
+    pub fn level() -> Self {
+        Self {
+            kind: HorizonDipModelKind::Level,
+            model: LEVEL_HORIZON_DIP,
+        }
+    }
+
+    pub fn constant(dip: Angle, model: Model) -> Result<Self, ConventionalRiseSetPolicyError> {
+        if dip.radians() < 0.0 || dip.radians() > PI / 2.0 {
+            return Err(ConventionalRiseSetPolicyError::HorizonDipOutOfRange);
+        }
+        Ok(Self {
+            kind: HorizonDipModelKind::Constant(dip),
+            model,
+        })
+    }
+
+    pub fn spherical(
+        radius: Distance,
+        model: Model,
+    ) -> Result<Self, ConventionalRiseSetPolicyError> {
+        if radius.meters() <= 0.0 {
+            return Err(ConventionalRiseSetPolicyError::HorizonRadiusNotPositive);
+        }
+        Ok(Self {
+            kind: HorizonDipModelKind::Spherical(radius),
+            model,
+        })
+    }
+
+    pub fn model(self) -> Model {
+        self.model
+    }
+
+    pub fn constant_dip(self) -> Option<Angle> {
+        match self.kind {
+            HorizonDipModelKind::Constant(dip) => Some(dip),
+            HorizonDipModelKind::Level | HorizonDipModelKind::Spherical(_) => None,
+        }
+    }
+
+    pub fn spherical_radius(self) -> Option<Distance> {
+        match self.kind {
+            HorizonDipModelKind::Spherical(radius) => Some(radius),
+            HorizonDipModelKind::Level | HorizonDipModelKind::Constant(_) => None,
+        }
+    }
+}
+
+/// Explicit conventional circumstances selected by the caller.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConventionalRiseSetPolicy {
+    refraction: RefractionModel,
+    limb: LimbModel,
+    horizon_dip: HorizonDipModel,
+}
+
+impl ConventionalRiseSetPolicy {
+    pub fn new(refraction: RefractionModel, limb: LimbModel, horizon_dip: HorizonDipModel) -> Self {
+        Self {
+            refraction,
+            limb,
+            horizon_dip,
+        }
+    }
+
+    pub fn refraction(self) -> RefractionModel {
+        self.refraction
+    }
+
+    pub fn limb(self) -> LimbModel {
+        self.limb
+    }
+
+    pub fn horizon_dip(self) -> HorizonDipModel {
+        self.horizon_dip
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConventionalRiseSetPolicyError {
+    RefractionOutOfRange,
+    LimbRadiusNotPositive,
+    LimbAngularRadiusOutOfRange,
+    HorizonDipOutOfRange,
+    HorizonRadiusNotPositive,
+}
+
+impl fmt::Display for ConventionalRiseSetPolicyError {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let message = match *self {
+            ConventionalRiseSetPolicyError::RefractionOutOfRange => {
+                "constant refraction must be between zero and 90 degrees"
+            }
+            ConventionalRiseSetPolicyError::LimbRadiusNotPositive => {
+                "physical limb radius must be positive"
+            }
+            ConventionalRiseSetPolicyError::LimbAngularRadiusOutOfRange => {
+                "upper-limb angular radius must be greater than zero and at most 90 degrees"
+            }
+            ConventionalRiseSetPolicyError::HorizonDipOutOfRange => {
+                "horizon dip must be between zero and 90 degrees"
+            }
+            ConventionalRiseSetPolicyError::HorizonRadiusNotPositive => {
+                "spherical horizon radius must be positive"
+            }
+        };
+        formatter.write_str(message)
+    }
+}
+
+impl ::std::error::Error for ConventionalRiseSetPolicyError {}
 
 /// Validated numerical controls for sampled topocentric meridian transits.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -659,6 +981,117 @@ impl AirlessRiseSetEvent {
 
     pub fn naming_model(&self) -> Model {
         self.naming_model
+    }
+}
+
+/// Direction through the caller-selected conventional horizon circumstance.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConventionalRiseSetKind {
+    Rise,
+    Set,
+}
+
+/// One sampled, bracketed conventional rise or set circumstance.
+///
+/// The event solves `airless center altitude + refraction + upper-limb offset
+/// + horizon dip = 0`. The three reported terms and the derived center
+/// altitude are evaluated at the interval midpoint, so they explain the
+/// selected model but are not angular bounds over the whole TT interval.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConventionalRiseSetEvent {
+    body: ApparentBody,
+    kind: ConventionalRiseSetKind,
+    interval: EventInterval,
+    observer: Observer,
+    airless_center_altitude: Angle,
+    refraction_offset: Angle,
+    limb_offset: Angle,
+    horizon_dip_offset: Angle,
+    policy: ConventionalRiseSetPolicy,
+    circumstance_model: Model,
+    refraction_model: Model,
+    limb_model: Model,
+    horizon_dip_model: Model,
+    provider_model: Model,
+    provider_snapshot: Option<String>,
+    transform_model: Model,
+    earth_orientation_authority: String,
+    earth_orientation_snapshot: String,
+}
+
+impl ConventionalRiseSetEvent {
+    pub fn body(&self) -> ApparentBody {
+        self.body
+    }
+
+    pub fn kind(&self) -> ConventionalRiseSetKind {
+        self.kind
+    }
+
+    pub fn interval(&self) -> EventInterval {
+        self.interval
+    }
+
+    pub fn observer(&self) -> Observer {
+        self.observer
+    }
+
+    pub fn airless_center_altitude(&self) -> Angle {
+        self.airless_center_altitude
+    }
+
+    pub fn refraction_offset(&self) -> Angle {
+        self.refraction_offset
+    }
+
+    pub fn limb_offset(&self) -> Angle {
+        self.limb_offset
+    }
+
+    pub fn horizon_dip_offset(&self) -> Angle {
+        self.horizon_dip_offset
+    }
+
+    /// The complete selected policy, including physical limb and spherical
+    /// horizon radii where those models were selected.
+    pub fn policy(&self) -> ConventionalRiseSetPolicy {
+        self.policy
+    }
+
+    pub fn circumstance_model(&self) -> Model {
+        self.circumstance_model
+    }
+
+    pub fn refraction_model(&self) -> Model {
+        self.refraction_model
+    }
+
+    pub fn limb_model(&self) -> Model {
+        self.limb_model
+    }
+
+    pub fn horizon_dip_model(&self) -> Model {
+        self.horizon_dip_model
+    }
+
+    pub fn provider_model(&self) -> Model {
+        self.provider_model
+    }
+
+    pub fn provider_snapshot(&self) -> Option<&str> {
+        self.provider_snapshot.as_ref().map(String::as_str)
+    }
+
+    pub fn transform_model(&self) -> Model {
+        self.transform_model
+    }
+
+    pub fn earth_orientation_authority(&self) -> &str {
+        &self.earth_orientation_authority
+    }
+
+    pub fn earth_orientation_snapshot(&self) -> &str {
+        &self.earth_orientation_snapshot
     }
 }
 
@@ -1469,6 +1902,66 @@ pub type AltitudeCircumstanceError<P, E> = AltitudeCrossingError<P, E>;
 /// Error boundary shared by named airless rise/set events.
 pub type AirlessRiseSetError<P, E> = AltitudeCrossingError<P, E>;
 
+/// A failure while searching a caller-composed conventional rise/set event.
+#[derive(Debug)]
+pub enum ConventionalRiseSetError<P, E> {
+    Observation(AltitudeCrossingError<P, E>),
+    LimbContainsObserver {
+        body: ApparentBody,
+        epoch: JulianDate<TerrestrialTime>,
+        physical_radius: Distance,
+        topocentric_distance: Distance,
+    },
+    ObserverBelowHorizonReference {
+        epoch: JulianDate<TerrestrialTime>,
+        observer_height_meters: f64,
+    },
+}
+
+impl<P: fmt::Display, E: fmt::Display> fmt::Display for ConventionalRiseSetError<P, E> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ConventionalRiseSetError::Observation(ref source) => source.fmt(formatter),
+            ConventionalRiseSetError::LimbContainsObserver {
+                body,
+                epoch,
+                physical_radius,
+                topocentric_distance,
+            } => write!(
+                formatter,
+                "{} physical limb radius {} km is not smaller than topocentric distance {} km at TT JD {}",
+                body.name(),
+                physical_radius.kilometers(),
+                topocentric_distance.kilometers(),
+                epoch.day()
+            ),
+            ConventionalRiseSetError::ObserverBelowHorizonReference {
+                epoch,
+                observer_height_meters,
+            } => write!(
+                formatter,
+                "observer height {} m is below the spherical-horizon reference at TT JD {}",
+                observer_height_meters,
+                epoch.day()
+            ),
+        }
+    }
+}
+
+impl<P, E> ::std::error::Error for ConventionalRiseSetError<P, E>
+where
+    P: ::std::error::Error + 'static,
+    E: ::std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            ConventionalRiseSetError::Observation(ref source) => Some(source),
+            ConventionalRiseSetError::LimbContainsObserver { .. }
+            | ConventionalRiseSetError::ObserverBelowHorizonReference { .. } => None,
+        }
+    }
+}
+
 /// Error boundary shared by topocentric meridian-transit events.
 pub type MeridianTransitError<P, E> = AltitudeCrossingError<P, E>;
 
@@ -1564,6 +2057,281 @@ where
                 .collect()
         },
     )
+}
+
+/// Find conventional rise and set circumstances under an explicit policy.
+///
+/// At each sample the search evaluates the airless topocentric center altitude
+/// plus the selected constant refraction, upper-limb offset, and horizon dip.
+/// An ascending zero is `Rise`; a descending zero is `Set`. A physical-radius
+/// limb is evaluated from each topocentric range, so its threshold can change
+/// across the search. A spherical horizon dip uses the observer's ellipsoid
+/// height and the caller-selected radius.
+///
+/// This is a sampled, sign-changing event search with the same one-hour
+/// ceiling and empty-result meaning as [`airless_altitude_crossings`]. It
+/// selects neither terrain, obstructions, a civil date, weather inputs, nor a
+/// visibility criterion. The refraction value is a constant target lift, not
+/// an atmospheric ray-tracing model.
+pub fn conventional_rise_set_events<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    search: ConventionalRiseSetSearch,
+    policy: ConventionalRiseSetPolicy,
+) -> Result<Vec<ConventionalRiseSetEvent>, ConventionalRiseSetError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let orientation_authority = earth_orientation.authority().to_owned();
+    let orientation_snapshot = earth_orientation.data_snapshot().to_owned();
+    let mut samples = Vec::new();
+    let mut epoch = search.window().start();
+    loop {
+        samples.push(ScalarSample {
+            epoch,
+            value: conventional_rise_set_terms(
+                positions,
+                earth_orientation,
+                observer,
+                body,
+                epoch,
+                policy,
+                &orientation_authority,
+                &orientation_snapshot,
+            )?
+            .value(),
+        });
+        if epoch.day() >= search.window().end().day() {
+            break;
+        }
+        let next_day = (epoch.day() + search.window().step_days()).min(search.window().end().day());
+        epoch = JulianDate::from_julian_day(next_day)
+            .expect("a bounded step between finite epochs remains finite");
+    }
+
+    let mut events = Vec::new();
+    let mut index = 0;
+    while index < samples.len() {
+        let left = samples[index];
+        if left.value == 0.0 {
+            let zero_start = index;
+            let mut zero_end = index;
+            while zero_end + 1 < samples.len() && samples[zero_end + 1].value == 0.0 {
+                zero_end += 1;
+            }
+            let before = if zero_start > 0 {
+                Some(samples[zero_start - 1].value)
+            } else {
+                None
+            };
+            let after = if zero_end + 1 < samples.len() {
+                Some(samples[zero_end + 1].value)
+            } else {
+                None
+            };
+            if zero_start == zero_end {
+                if let Some(kind) = exact_crossing_kind(before, after) {
+                    push_conventional_rise_set_event(
+                        &mut events,
+                        positions,
+                        earth_orientation,
+                        observer,
+                        body,
+                        conventional_kind(kind),
+                        EventInterval {
+                            start: left.epoch,
+                            end: left.epoch,
+                        },
+                        policy,
+                        &orientation_authority,
+                        &orientation_snapshot,
+                    )?;
+                }
+            }
+            index = zero_end + 1;
+            continue;
+        }
+
+        if index + 1 < samples.len() {
+            let right = samples[index + 1];
+            if right.value != 0.0 && left.value.signum() != right.value.signum() {
+                let kind = if right.value > 0.0 {
+                    ConventionalRiseSetKind::Rise
+                } else {
+                    ConventionalRiseSetKind::Set
+                };
+                let interval =
+                    refine_scalar_root(left, right, search.window().tolerance_days(), |epoch| {
+                        conventional_rise_set_terms(
+                            positions,
+                            earth_orientation,
+                            observer,
+                            body,
+                            epoch,
+                            policy,
+                            &orientation_authority,
+                            &orientation_snapshot,
+                        )
+                        .map(ConventionalRiseSetTerms::value)
+                    })?;
+                push_conventional_rise_set_event(
+                    &mut events,
+                    positions,
+                    earth_orientation,
+                    observer,
+                    body,
+                    kind,
+                    interval,
+                    policy,
+                    &orientation_authority,
+                    &orientation_snapshot,
+                )?;
+            }
+        }
+        index += 1;
+    }
+    Ok(events)
+}
+
+#[derive(Clone, Copy)]
+struct ConventionalRiseSetTerms {
+    airless_center_altitude: Angle,
+    refraction: Angle,
+    limb: Angle,
+    horizon_dip: Angle,
+}
+
+impl ConventionalRiseSetTerms {
+    fn value(self) -> f64 {
+        self.airless_center_altitude.radians()
+            + self.refraction.radians()
+            + self.limb.radians()
+            + self.horizon_dip.radians()
+    }
+}
+
+fn conventional_kind(kind: AltitudeCrossingKind) -> ConventionalRiseSetKind {
+    match kind {
+        AltitudeCrossingKind::Ascending => ConventionalRiseSetKind::Rise,
+        AltitudeCrossingKind::Descending => ConventionalRiseSetKind::Set,
+    }
+}
+
+fn conventional_rise_set_terms<P, E>(
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    epoch: JulianDate<TerrestrialTime>,
+    policy: ConventionalRiseSetPolicy,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<ConventionalRiseSetTerms, ConventionalRiseSetError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let observation = observer_observation(
+        positions,
+        earth_orientation,
+        observer,
+        body,
+        epoch,
+        expected_authority,
+        expected_snapshot,
+    )
+    .map_err(ConventionalRiseSetError::Observation)?;
+    let limb = match policy.limb().kind {
+        LimbModelKind::Center => Angle::from_radians(0.0).expect("zero is a finite angle"),
+        LimbModelKind::UpperAngularRadius(angular_radius) => angular_radius,
+        LimbModelKind::UpperPhysicalRadius(physical_radius) => {
+            let distance = observation.equatorial().distance();
+            if physical_radius >= distance {
+                return Err(ConventionalRiseSetError::LimbContainsObserver {
+                    body,
+                    epoch,
+                    physical_radius,
+                    topocentric_distance: distance,
+                });
+            }
+            Angle::from_radians((physical_radius.meters() / distance.meters()).asin())
+                .expect("a bounded physical-radius ratio produces a finite angle")
+        }
+    };
+    let horizon_dip = match policy.horizon_dip().kind {
+        HorizonDipModelKind::Level => Angle::from_radians(0.0).expect("zero is a finite angle"),
+        HorizonDipModelKind::Constant(dip) => dip,
+        HorizonDipModelKind::Spherical(radius) => {
+            let height = observer.height().meters();
+            if height < 0.0 {
+                return Err(ConventionalRiseSetError::ObserverBelowHorizonReference {
+                    epoch,
+                    observer_height_meters: height,
+                });
+            }
+            Angle::from_radians((radius.meters() / (radius.meters() + height)).acos()).expect(
+                "a nonnegative height over a positive spherical radius produces a finite dip",
+            )
+        }
+    };
+    Ok(ConventionalRiseSetTerms {
+        airless_center_altitude: observation.horizon().latitude().angle(),
+        refraction: policy.refraction().apparent_lift(),
+        limb,
+        horizon_dip,
+    })
+}
+
+fn push_conventional_rise_set_event<P, E>(
+    events: &mut Vec<ConventionalRiseSetEvent>,
+    positions: &P,
+    earth_orientation: &E,
+    observer: Observer,
+    body: ApparentBody,
+    kind: ConventionalRiseSetKind,
+    interval: EventInterval,
+    policy: ConventionalRiseSetPolicy,
+    expected_authority: &str,
+    expected_snapshot: &str,
+) -> Result<(), ConventionalRiseSetError<P::Error, E::Error>>
+where
+    P: GeocentricPositionProvider,
+    E: EarthOrientationProvider,
+{
+    let terms = conventional_rise_set_terms(
+        positions,
+        earth_orientation,
+        observer,
+        body,
+        interval.midpoint(),
+        policy,
+        expected_authority,
+        expected_snapshot,
+    )?;
+    events.push(ConventionalRiseSetEvent {
+        body,
+        kind,
+        interval,
+        observer,
+        airless_center_altitude: terms.airless_center_altitude,
+        refraction_offset: terms.refraction,
+        limb_offset: terms.limb,
+        horizon_dip_offset: terms.horizon_dip,
+        policy,
+        circumstance_model: CONVENTIONAL_RISE_SET_CIRCUMSTANCES,
+        refraction_model: policy.refraction().model(),
+        limb_model: policy.limb().model(),
+        horizon_dip_model: policy.horizon_dip().model(),
+        provider_model: positions.model(),
+        provider_snapshot: positions.data_snapshot().map(str::to_owned),
+        transform_model: AIRLESS_TOPOCENTRIC_TRANSFORM,
+        earth_orientation_authority: expected_authority.to_owned(),
+        earth_orientation_snapshot: expected_snapshot.to_owned(),
+    });
+    Ok(())
 }
 
 fn sample_observer_altitudes<P, E>(

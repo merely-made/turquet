@@ -215,9 +215,22 @@ upper transit is 213.281 seconds from its airless altitude maximum, proving the
 two event contracts remain distinct. See
 `receipts/2026-08-24_t4h_horizon_transits.md`.
 
-T4 remains open for observer-relative solar contacts and eclipse visibility,
-conventional refraction/limb/horizon rise-set policy, general visibility, and
-illuminated-fraction and distance extrema.
+**Ninth slice completed 2026-08-25.** `conventional_rise_set_events` composes
+caller-selected fixed refraction, center/fixed-angular/physical-radius upper
+limbs, and level/constant/spherical horizon dip over the provider-neutral
+topocentric observation. Results retain the complete validated policy and
+midpoint terms. USNO's sea-level 34-arcminute refraction plus fixed 16-arcminute
+solar limb agrees with its April 8 Boston minute times through the independent
+Horizons fixture; the Moon uses a dynamic topocentric semidiameter without a
+second parallax correction. See `receipts/2026-08-25_t4i_conventional_rise_set.md`.
+
+T5a is the first consumer gate: a Sky-home daily timeline. T4j then takes
+observer-relative solar contacts and local geometric eclipse visibility. T4k
+adds illuminated-fraction and distance facts and extrema; T4l names
+caller-threshold twilight; T4m admits only visibility windows forced by a real
+consumer's explicit policy. T5b then takes the Cleromancy interpretive
+projection, followed by T5c's bounded embedded solar-tracker profile. Terrain,
+weather, and social or presentation policy remain outside the engine.
 
 ## T5: Consumers and embedding
 
@@ -225,6 +238,10 @@ illuminated-fraction and distance extrema.
 - Add a bounded embedded profile for position and orientation calculations.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
+
+The intended acceptance order is T5a Sky-home, T5b Cleromancy, then T5c's
+solar-tracker profile, with the bounded T4j through T4m event slices between
+T5a and T5b as described above.
 
 Done when two materially different consumers reuse the same celestial state
 and derivation receipt without duplicating the calculation.

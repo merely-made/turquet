@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.11.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.12.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -60,6 +60,17 @@ that approximation. The regeneration script is
 `scripts/fetch_horizons_observer_vectors.ps1`.
 
 ## Event verification
+
+The T4i conventional rise/set receipt uses the U.S. Naval Observatory's
+definitions and one-day API v4.0.1. USNO defines its sea-level Sun convention
+as a 50-arcminute geometric center depression: 34 arcminutes fixed refraction
+plus a 16-arcminute average upper limb. Its geocentric Moon formula includes
+horizontal parallax; Turquet evaluates the Moon topocentrically, so it applies
+only the selected refraction and dynamic topocentric semidiameter.
+Definitions: <https://aa.usno.navy.mil/faq/RST_defs>. API documentation:
+<https://aa.usno.navy.mil/data/api>. The dated T4i receipt records both exact
+one-day request URLs, their coordinate/time-zone parameters, the API revision,
+and the four extracted minute values.
 
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
 geocentric positions, DUT1, direct topocentric airless elevations, and direct

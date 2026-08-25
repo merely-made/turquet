@@ -263,3 +263,23 @@ also omitted because its right ascension is undefined. Each accepted result
 retains its bounded TT interval, observer, provider model/snapshot,
 topocentric transform model, and Earth-orientation authority/snapshot. Direct
 Horizons quantity-42 local hour angles supply the independent reference path.
+
+## T4i addendum: 2026-08-25
+
+`conventional_rise_set_events` is a separate provider-neutral policy event. It
+searches the signed scalar `airless center altitude + refraction + limb +
+horizon dip` with T4f's one-hour sampling ceiling and its sign-change,
+boundary-zero, and flat-plateau semantics. An event retains the complete
+validated refraction, limb, and horizon-dip policy, alongside the midpoint
+terms and usual position, transform, and Earth-orientation identities.
+
+The policy chooses a fixed target refraction, a center, fixed-angular, or
+physical-radius upper limb, and a level, constant, or spherical horizon dip.
+Physical-radius limbs are evaluated from topocentric range. This is why the
+Moon path does not add USNO's geocentric horizontal-parallax term a second
+time. The USNO helpers are explicit 34-arcminute fixed refraction and a
+16-arcminute fixed solar upper limb, not an implicit product default.
+
+Altitude-dependent meteorological refraction, terrain, obstruction, civil-day,
+and visibility are still separate policies. The search does not turn an empty
+result into a persistent-state claim.

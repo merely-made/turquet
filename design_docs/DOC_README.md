@@ -28,6 +28,8 @@ This is the canonical index for active documents in `design_docs/`.
 The completed T4e, live-kernel verification, airless altitude-crossing, and
 altitude-circumstance, horizon, and meridian-event plans are archived under
 `archive_docs/2026-08-24/`.
+The T4i conventional rise/set plan is archived under
+`archive_docs/2026-08-25/`.
 Remaining event gates are canonical in `ROADMAP.md`.
 
 ## Maintainer-owned project description
