@@ -224,13 +224,27 @@ solar limb agrees with its April 8 Boston minute times through the independent
 Horizons fixture; the Moon uses a dynamic topocentric semidiameter without a
 second parallax correction. See `receipts/2026-08-25_t4i_conventional_rise_set.md`.
 
+**Tenth slice completed 2026-08-26.** `local_solar_eclipse_circumstances`
+finds strict observer-relative disk overlap around each new-moon phase. It
+reuses one WGS84 airless observer transform for the Sun and Moon at every TT
+sample, returns bounded greatest and C1--C4 contact intervals, local partial,
+annular, or total class, fixed-spherical-limb geometry, and an explicit
+upper-solar-limb airless-horizon state at greatest eclipse. The model uses the
+IAU nominal solar and mean lunar radii; it excludes limb relief, refraction,
+terrain, obstruction, weather, eye safety, and a general visibility window.
+Boston partial, Dallas total, and Albuquerque annular analytical maxima are
+within 11.630 seconds of published local circumstances. A 2,950-row DE441/
+Horizons fixture independently exercises those classes, Galway's below-horizon
+geometry, and the Cape Town no-overlap control; direct Sun-altitude residuals
+are at most 0.00648 degrees. See
+`receipts/2026-08-26_t4j_local_solar_eclipse_circumstances.md`.
+
 T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
 `bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
 focused tests and the headed day-change receipt landed in Turnstone at
 `c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
-`turnstone/docs/receipts/sky_home_20260826/README.md`. T4j is the next engine
-slice: observer-relative solar contacts and local geometric eclipse visibility.
-T4k adds illuminated-fraction and distance facts and extrema; T4l names
+`turnstone/docs/receipts/sky_home_20260826/README.md`. T4k now adds
+illuminated-fraction and distance facts and extrema; T4l names
 caller-threshold twilight; T4m admits only visibility windows forced by a real
 consumer's explicit policy. T5b then takes the Cleromancy interpretive
 projection, followed by T5c's bounded embedded solar-tracker profile. Terrain,
@@ -244,8 +258,8 @@ records only the engine seams that consumers force.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-T5a Sky-home is complete. The remaining acceptance order is T4j through T4m,
-then T5b Cleromancy and T5c's bounded solar-tracker profile.
+T5a Sky-home and T4j are complete. The remaining acceptance order is T4k
+through T4m, then T5b Cleromancy and T5c's bounded solar-tracker profile.
 
 T5a's archived plan is
 `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.

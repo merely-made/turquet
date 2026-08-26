@@ -23,6 +23,15 @@ use observer::{
 };
 use provider::{EarthOrientationProvider, GeocentricPositionProvider};
 
+mod solar_eclipse;
+pub use self::solar_eclipse::{
+    local_solar_eclipse_circumstances, LocalSolarEclipseCircumstances,
+    LocalSolarEclipseContact, LocalSolarEclipseContactKind, LocalSolarEclipseError,
+    LocalSolarEclipseGeometry, LocalSolarEclipseKind, LocalSolarEclipseSearch,
+    LocalSolarEclipseSearchError, LocalSolarEclipseVisibility,
+    LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCES, MAX_LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS,
+};
+
 const TWO_PI: f64 = 2.0 * PI;
 
 /// Maximum sampling step accepted by the current event searches.

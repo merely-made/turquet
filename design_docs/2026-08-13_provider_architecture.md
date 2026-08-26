@@ -302,3 +302,21 @@ provider-wide bound. Its default is `None`, meaning undisclosed rather than
 exact. `AnalyticalEphemeris` returns the measured 10-millidegree angular bound
 for its 5,277-vector DE440s cohort. The verifier retains `None` because kernel
 identity alone does not establish one uniform provider-wide accuracy claim.
+
+## T4j addendum: 2026-08-26
+
+`local_solar_eclipse_circumstances` is a separate observer-relative family,
+not a reclassification of geocentric `EclipseCandidate`. It first finds
+provider-owned new-moon phase intervals, then at every evaluation acquires the
+Sun and Moon states plus one epoch-indexed Earth orientation and applies the
+same WGS84 airless `ObserverTransform` to both bodies. This prevents a second
+parallax correction and keeps UT1, polar motion, and transform provenance in
+the result.
+
+The revision-1 geometry uses a fixed IAU nominal solar radius and Turquet's
+mean lunar radius. It solves strict disk overlap, bounded greatest and C1--C4
+contacts, and partial, annular, or total local class. Its visibility fact is
+only the physical solar upper limb relative to the airless horizon at greatest
+eclipse. Lunar limb relief, refraction, terrain, obstruction, weather, eye
+safety, civil naming, and a general visibility-window policy remain outside
+this contract and therefore remain available for later consumer-forced slices.

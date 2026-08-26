@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.13.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.14.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -71,6 +71,35 @@ Definitions: <https://aa.usno.navy.mil/faq/RST_defs>. API documentation:
 <https://aa.usno.navy.mil/data/api>. The dated T4i receipt records both exact
 one-day request URLs, their coordinate/time-zone parameters, the API revision,
 and the four extracted minute values.
+
+## T4j local solar-eclipse circumstances
+
+`tests/vectors/local_solar_eclipse_horizons.tsv` contains 2,950 five-minute
+DE441 rows captured from NASA/JPL Horizons API 1.2 on 2026-08-26. It supplies
+geocentric apparent ecliptic longitude, latitude, and range through quantities
+20 and 31, plus site-specific airless azimuth/elevation, local apparent hour
+angle, and DUT1 through quantities 4, 42, and 49. The five fixed WGS84 sites
+are Boston partial, Dallas total, Albuquerque annular, Galway low-altitude
+partial, and Cape Town outside the local footprint. The fixture's
+`eop.260825.p261121` header is retained; tests interpolate DUT1 and explicitly
+record their zero-polar-motion approximation while direct Horizons altitudes
+retain the source path. Regenerate it with
+`scripts/fetch_horizons_local_solar_eclipse_vectors.ps1`.
+
+The independent event references are the U.S. Naval Observatory Solar Eclipse
+Computer and NASA GSFC local Besselian circumstance tables. The USNO endpoint
+documents UT1 output and its limb convention, while T4j instead discloses its
+fixed IAU nominal solar and mean lunar spherical radii. The test keeps that
+model distinction visible rather than presenting a limb-profile, refraction,
+terrain, weather, or human-visibility comparison as an engine result. Reference
+requests: <https://aa.usno.navy.mil/api/eclipses/solar/date?date=2024-4-8&coords=42.3601,-71.0589&height=43>,
+<https://aa.usno.navy.mil/api/eclipses/solar/date?date=2024-4-8&coords=32.7767,-96.7970&height=0>,
+and <https://aa.usno.navy.mil/api/eclipses/solar/date?date=2023-10-14&coords=35.0844,-106.6504&height=0>.
+NASA's comparable maps are
+<https://eclipse.gsfc.nasa.gov/SEgoogle/SEgoogle2001/SE2024Apr08Tgoogle.html>
+and <https://eclipse.gsfc.nasa.gov/SEgoogle/SEgoogle2001/SE2023Oct14Agoogle.html>.
+Horizons quantity definitions are in
+<https://ssd.jpl.nasa.gov/horizons/manual.html>.
 
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
 geocentric positions, DUT1, direct topocentric airless elevations, and direct
