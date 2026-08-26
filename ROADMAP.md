@@ -224,16 +224,18 @@ solar limb agrees with its April 8 Boston minute times through the independent
 Horizons fixture; the Moon uses a dynamic topocentric semidiameter without a
 second parallax correction. See `receipts/2026-08-25_t4i_conventional_rise_set.md`.
 
-T5a is the first consumer gate: a Sky-home daily timeline. T4j then takes
-observer-relative solar contacts and local geometric eclipse visibility. T4k
-adds illuminated-fraction and distance facts and extrema; T4l names
+T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
+`bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
+focused tests and the headed day-change receipt landed in Turnstone at
+`c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
+`turnstone/docs/receipts/sky_home_20260826/README.md`. T4j is the next engine
+slice: observer-relative solar contacts and local geometric eclipse visibility.
+T4k adds illuminated-fraction and distance facts and extrema; T4l names
 caller-threshold twilight; T4m admits only visibility windows forced by a real
 consumer's explicit policy. T5b then takes the Cleromancy interpretive
 projection, followed by T5c's bounded embedded solar-tracker profile. Terrain,
-weather, and social or presentation policy remain outside the engine.
-The cross-repository T5a implementation and done-conditions are owned by
-`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`; Turquet records
-only the engine seams that consumer forces.
+weather, and social or presentation policy remain outside the engine. Turquet
+records only the engine seams that consumers force.
 
 ## T5: Consumers and embedding
 
@@ -242,16 +244,15 @@ only the engine seams that consumer forces.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-The intended acceptance order is T5a Sky-home, T5b Cleromancy, then T5c's
-solar-tracker profile, with the bounded T4j through T4m event slices between
-T5a and T5b as described above.
+T5a Sky-home is complete. The remaining acceptance order is T4j through T4m,
+then T5b Cleromancy and T5c's bounded solar-tracker profile.
 
-The active T5a plan lives at
-`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Its first engine
-pressure exposed two bounded public seams: converting retained TT values back
-to a scale-aware epoch for civil presentation, and querying an optional
-provider-wide accuracy disclosure without inventing one for providers whose
-evidence is result-specific or absent.
+T5a's archived plan is
+`turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
+Its first engine pressure exposed two bounded public seams: converting retained
+TT values back to a scale-aware epoch for civil presentation, and querying an
+optional provider-wide accuracy disclosure without inventing one for providers
+whose evidence is result-specific or absent.
 
 Done when two materially different consumers reuse the same celestial state
 and derivation receipt without duplicating the calculation.
