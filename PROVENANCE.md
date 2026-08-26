@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.16.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.17.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -183,6 +183,30 @@ transform through the reference path. Turquet's local meridian itself is
 formed from IAU 2006/2000A GAST and `sofars`/SOFA `apio`'s
 TIO-and-polar-motion-adjusted longitude. The canonical IAU SOFA 2023
 `iauApio` validation vector is a unit control for that seam.
+
+## T4l airless solar twilight
+
+T4l reuses the existing altitude-crossing fixture and capture script without a
+new external capture. Its narrow test adapter admits only the five-minute
+Boston Sun and Tromso Sun rows. It converts every captured UTC Julian Date with
+`ScaleAwareEpoch::from_jde_utc` before storing a typed TT epoch, and separately
+converts Horizons DUT1 into the typed UT1 epoch used by the Earth-orientation
+provider. Direct quantity-4 airless-altitude roots are linearly interpolated
+only after that UTC-to-TT conversion.
+
+Boston's -6, -12, and -18 degree threshold pairs run through both the fixture
+and analytical position lanes. Each of the twelve named results is within the
+separate 0.5-second gate from its direct quantity-4 reference; the measured
+maximum is 0.420 seconds. Tromso midsummer is the high-latitude empty control.
+The raw Horizons ecliptic state columns remain an IAU76/80 numerical adapter,
+not an assertion that they are textual aliases of Turquet's analytical IAU
+2006/2000A path; the direct quantity-4 altitude is the independent authority.
+The fixture continues to disclose its zero-polar-motion approximation and EOP
+snapshot boundary.
+
+This evidence names only caller-chosen airless Sun-center crossings. It does
+not validate a conventional twilight band, refraction, limb, horizon dip, civil
+date, terrain, weather, luminance, or human-visibility convention.
 
 `tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
 Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23

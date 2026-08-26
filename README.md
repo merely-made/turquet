@@ -14,13 +14,14 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.16.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.17.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, lunar
 eclipse circumstances, and local solar-eclipse contacts, plus observer-relative
-airless altitude crossings, named caller-threshold rise/set facts, extrema,
-sampled threshold circumstances, and separate upper/lower meridian transits.
+airless altitude crossings, named caller-threshold rise/set and solar-twilight
+facts, extrema, sampled threshold circumstances, and separate upper/lower
+meridian transits.
 It also provides one provider-neutral, geocentric apparent lunar-illumination
 fact for a selected TT epoch and sampled, bounded extrema of any supported
 body's provider-supplied geocentric apparent range.
@@ -99,6 +100,11 @@ geocentric range, returns bounded minimum or maximum intervals, and retains the
 evaluated midpoint range plus provider provenance. Its result is neither an
 orbital or barycentric distance extremum nor a topocentric or visibility fact;
 an empty result means no sampled, bracketed reversal was found.
+`airless_solar_twilight_events` separately names a caller-selected airless
+Sun-center crossing: ascending is `Dawn`, descending is `Dusk`. It chooses no
+standard twilight band, refraction, limb, horizon dip, civil date, terrain,
+weather, luminance, or visibility policy; the nested crossing retains the
+chosen threshold and complete provenance.
 Airless `Rise` and `Set` name only a caller-selected center-altitude crossing:
 they do not select refraction, limb, horizon, terrain, civil, or visibility
 policy. Meridian transits are separate roots of topocentric apparent local

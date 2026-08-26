@@ -357,3 +357,17 @@ This path accepts no observer, Earth orientation, refraction, limb, terrain, or
 visibility policy. It retains its own model revision plus provider model and
 snapshot, and rejects a provider state whose typed TT epoch differs from the
 request. Twilight and consumer-forced visibility remain separate policy slices.
+
+## T4l addendum: 2026-08-26
+
+`airless_solar_twilight_events` deliberately adds no solver. It accepts the
+existing caller-owned `AltitudeCrossingSearch`, fixes the body to the Sun, and
+names an ascending airless center crossing `Dawn` and a descending one `Dusk`.
+The nested crossing retains the bounded TT interval, threshold, observer,
+provider, WGS84 transform, and Earth-orientation provenance; the wrapper adds a
+revisioned naming model only.
+
+It selects no standard twilight band or default threshold, and adds no
+refraction, limb, horizon dip, civil date, terrain, obstruction, weather,
+luminance, or visibility convention. Empty retains the underlying sampled
+crossing meaning. General visibility stays a separate T4m policy slice.

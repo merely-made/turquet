@@ -138,7 +138,7 @@ $generated = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
     "# generated: $generated; EOP $eopSnapshot",
     '# sampling: five-minute UTC grid including both endpoints of each 24-hour case',
     '# sites: user-defined WGS84 geodetic longitude degrees east, latitude degrees north, height km',
-    '# cases: Boston Sun ordinary pair; Sydney Moon ordinary pair; Tromso Sun midsummer empty control',
+    '# cases: Boston Sun ordinary and twilight pairs; Sydney Moon ordinary pair; Tromso Sun midsummer empty control',
     '# polar motion: Horizons applies its EOP pole; Turquet test explicitly approximates xp=yp=0',
     '# regenerate: pwsh -File scripts/fetch_horizons_altitude_crossing_vectors.ps1 > tests/vectors/altitude_crossings_horizons.tsv',
     '# columns: case, site lon/lat/height, JD UTC, body, geocentric apparent longitude degrees, latitude degrees, range AU, direct topocentric altitude degrees, direct local apparent hour angle decimal hours, DUT1 seconds'

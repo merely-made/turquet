@@ -265,17 +265,31 @@ seconds and 27.169 km. This is not an orbital, barycentric, topocentric, or
 visibility distance claim. See
 `receipts/2026-08-26_t4k_b_geocentric_distance_extrema.md`.
 
+**Thirteenth slice completed 2026-08-26.** `airless_solar_twilight_events`
+names one caller-selected existing airless Sun-center crossing: ascending is
+`Dawn`, descending is `Dusk`. It takes the same explicit
+`AltitudeCrossingSearch` as the underlying solver, so the threshold, one-hour
+sampling ceiling, TT tolerance, and error boundaries remain caller-owned. Each
+event retains its nested crossing and a revisioned naming model. It chooses no
+conventional band, refraction, limb, horizon dip, civil date, terrain, weather,
+luminance, or visibility policy. Boston's -6, -12, and -18 degree pairs run
+through both fixture and analytical lanes against direct five-minute Horizons
+quantity-4 altitude roots; all twelve comparisons are within 0.420 seconds.
+Tromso's midsummer Sun is the empty control. See
+`receipts/2026-08-26_t4l_airless_solar_twilight.md`.
+
 T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
 `bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
 focused tests and the headed day-change receipt landed in Turnstone at
 `c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
 `turnstone/docs/receipts/sky_home_20260826/README.md`. T4k-a supplies lunar
-illumination and T4k-b supplies provider-neutral distance extrema. T4l next
-names caller-threshold twilight, while T4m admits only visibility
-windows forced by a real consumer's explicit policy. T5b takes the Cleromancy
-interpretive projection, followed by T5c's bounded embedded solar-tracker
-profile. Terrain, weather, and social or presentation policy remain outside the
-engine. Turquet records only the engine seams that consumers force.
+illumination and T4k-b supplies provider-neutral distance extrema. T4l names
+caller-threshold airless solar twilight. T4m remains a deferred,
+consumer-forced sampled airless-above-threshold window, not a visibility claim.
+T5b now takes the Cleromancy interpretive projection, followed by T5c's bounded
+embedded solar-tracker profile. Terrain, weather, and social or presentation
+policy remain outside the engine. Turquet records only the engine seams that
+consumers force.
 
 ## T5: Consumers and embedding
 
@@ -284,8 +298,9 @@ engine. Turquet records only the engine seams that consumers force.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-T5a, T4j, T4k-a, and T4k-b are complete. The remaining acceptance order is
-T4l and T4m, then T5b Cleromancy and T5c's bounded solar-tracker profile.
+T5a, T4j, T4k-a, T4k-b, and T4l are complete. The next acceptance proof is
+T5b Cleromancy, followed by T5c's bounded solar-tracker profile. T4m remains
+deferred until a consumer forces a sampled geometric availability window.
 
 T5a's archived plan is
 `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
