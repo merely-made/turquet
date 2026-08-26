@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.12.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.13.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the

@@ -12,6 +12,7 @@ use std::f64::consts::PI;
 use std::marker::PhantomData;
 
 pub use hifitime::Epoch as ScaleAwareEpoch;
+use hifitime::{Duration, TimeScale};
 
 const AU_METERS: f64 = 149_597_870_700.0;
 const J2000_JD: f64 = 2_451_545.0;
@@ -97,6 +98,19 @@ impl JulianDate<TerrestrialTime> {
         let day = epoch.to_jde_tt_days();
         Self::from_parts(J2000_JD, day - J2000_JD)
             .expect("hifitime epochs produce finite TT Julian Dates")
+    }
+
+    /// Convert this TT Julian Date back to a scale-aware epoch.
+    ///
+    /// This is the inverse consumer boundary to [`JulianDate::from_epoch`].
+    /// It lets applications retain event intervals in TT while converting
+    /// them to UTC or another civil representation for presentation. The
+    /// physical instant is preserved to the precision of the Julian-date
+    /// parts; formatting an inserted UTC `:60` label follows hifitime's
+    /// documented leap-second representation.
+    pub fn to_epoch(self) -> ScaleAwareEpoch {
+        ScaleAwareEpoch::from_jde_in_time_scale(self.day1, TimeScale::TT)
+            + Duration::from_days(self.day2)
     }
 }
 

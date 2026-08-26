@@ -283,3 +283,22 @@ time. The USNO helpers are explicit 34-arcminute fixed refraction and a
 Altitude-dependent meteorological refraction, terrain, obstruction, civil-day,
 and visibility are still separate policies. The search does not turn an empty
 result into a persistent-state claim.
+
+## T5a consumer-seam addendum: 2026-08-26
+
+The first Sky-home daily-timeline consumer is owned across the repository
+boundary by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`.
+Turquet does not duplicate that product plan. It records the two engine seams
+the consumer forced.
+
+`JulianDate<TerrestrialTime>::to_epoch` is the inverse of the typed hifitime
+input boundary. Event records remain TT facts, while a consumer can recover a
+scale-aware epoch for civil presentation. The physical instant round-trips
+across the 2016 leap-second boundary; the spelling of an inserted UTC `:60`
+label remains hifitime's representation concern.
+
+`GeocentricPositionProvider::accuracy` optionally discloses one homogeneous
+provider-wide bound. Its default is `None`, meaning undisclosed rather than
+exact. `AnalyticalEphemeris` returns the measured 10-millidegree angular bound
+for its 5,277-vector DE440s cohort. The verifier retains `None` because kernel
+identity alone does not establish one uniform provider-wide accuracy claim.

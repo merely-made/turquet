@@ -1,8 +1,8 @@
 # Public calculation audit
 
 This is the T1 boundary map with T2, T3, and T4 public-contract addenda for
-Turquet 0.12.0. It inventories every exported calculation in the crate as of
-2026-08-25. It is descriptive, not an accuracy certificate.
+Turquet 0.13.0. It inventories every exported calculation in the crate as of
+2026-08-26. It is descriptive, not an accuracy certificate.
 
 The status words have narrow meanings:
 
@@ -21,7 +21,7 @@ coefficient revision, validity interval, or expected error. Those omissions
 remain omissions here rather than being filled with guesses.
 
 All inherited symbols in the tables below are shorthand for paths under
-`turquet::compat`. Their source modules are private in 0.12.0. The Turquet-era
+`turquet::compat`. Their source modules are private in 0.13.0. The Turquet-era
 `foundation`, `orientation`, `apparent`, `observer`, `provider`, and `events`
 modules form the primary API.
 
@@ -29,7 +29,7 @@ modules form the primary API.
 
 | Public symbol | Source and contract | Range and evidence | Status |
 | --- | --- | --- | --- |
-| `foundation::{JulianDate, TimeOffset, Angle, Longitude, EastLongitude, Latitude, Length, Distance, Observer}` | Finite unit-safe values. `JulianDate<Scale>` carries TT or UT1 in the type and preserves two input parts; observed DUT1 constructs UT1 through a seconds-typed `TimeOffset`. Celestial longitude wraps to 0-2pi; geographic longitude stays signed and east-positive. | Constructor, range, normalization, and unit tests in `tests/foundation.rs`. | measured |
+| `foundation::{JulianDate, TimeOffset, Angle, Longitude, EastLongitude, Latitude, Length, Distance, Observer}` | Finite unit-safe values. `JulianDate<Scale>` carries TT or UT1 in the type and preserves two input parts; typed TT converts to and from a scale-aware hifitime epoch, while observed DUT1 constructs UT1 through a seconds-typed `TimeOffset`. Celestial longitude wraps to 0-2pi; geographic longitude stays signed and east-positive. | Constructor, range, normalization, ordinary UTC label, and physical-instant round-trip tests across the 2016 leap-second boundary in `tests/foundation.rs`. | measured |
 | `foundation::{Direction, UnitVector, Rotation}` and frame markers | Reference frame is a type parameter; a `Rotation<From, To>` only accepts a `UnitVector<From>`. | Runtime SOFA vector plus compile-fail frame-mismatch doctest. | measured |
 | `foundation::{Model, Accuracy, Modelled, State}` | A calculation carries its algorithm revision, evidence kind, bounded angular residual, epoch, typed frame, direction, and distance. | Metadata assertions in `tests/apparent.rs` and `tests/orientation.rs`. | measured |
 | `orientation::nutation` | `JulianDate<TerrestrialTime>` to IAU 2000A nutation adjusted for IAU 2006 precession; radians on the mean equinox/ecliptic of date. | SOFARS 0.6.1; matches the SOFA 2023 `nut06a` vector to 1e-13 rad. | measured |
@@ -37,10 +37,10 @@ modules form the primary API.
 | `orientation::{true_obliquity, true_ecliptic_to_true_equator}` | Typed TT to IAU 2006/2000A true obliquity or a frame-safe true-ecliptic-to-true-equatorial rotation. | Composed from the measured SOFARS `obl06` and `nut06a` model; exercised through all 90 observer vectors. | measured |
 | `apparent::ApparentBody::name`, `apparent::APPARENT_BODIES` | Body identifiers; no numerical contract. | Exhaustive for the ten supported bodies. | measured |
 | `apparent::{ApparentStage, APPARENT_STAGES}` | Ordered disclosure of source-frame precession, light-time, solar deflection, annual aberration, and nutation. A stage may be the identity where the source series is already in the required frame or is the deflector. | Each stage is present in the composed analytical path; the full path supplies the numerical evidence. | measured |
-| `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. Targeted eclipse and lunar distance-extreme vectors also pass. | measured |
+| `apparent::ApparentSky::at`, `ApparentSky::position`, `apparent::position`, `apparent::analytical_accuracy` | `JulianDate<TerrestrialTime>` to `Modelled<State<TrueEclipticEquinoxOfDate>>`; direction is radians through typed accessors and distance is stored in metres with km/AU accessors. The public accuracy disclosure is explicitly angular and cohort-scoped. | Current path holds 5,277 committed DE440s vectors from 1885 through 2099 below a 10-millidegree gate, measured worst 3; Pluto rejects dates outside its series. Targeted eclipse and lunar distance-extreme vectors also pass. | measured |
 | `apparent::is_retrograde` | Typed TT epoch; central difference of typed apparent longitude over one TT day. | Same body range, narrowed by half a day at both edges. This remains a convenient analytical classification; provider-neutral event solving is in `events`. | measured |
 | `observer::{EarthOrientation, ObserverTransform, ObserverTransformError, ObserverSky, Observation, position}` | Typed TT ephemeris plus typed UT1 Earth rotation, caller-supplied polar motion and runtime snapshot identity, and WGS84 observer to topocentric true-equatorial state plus airless north-zero horizon direction. `ObserverTransform` applies the same observer geometry to a provider-supplied geocentric state and rejects epoch mismatch. Observer origin is encoded in distinct frame markers. | 90 DE441/Horizons vectors: all ten bodies, three epochs, Boston/Sydney/Tromso, measured worst 0.001522 degrees and 0.000108 AU. The factored transform is checked exactly against the analytical wrapper. Compile-fail proof rejects TT where UT1 is required. | measured |
-| `provider::{GeocentricPositionProvider, AnalyticalEphemeris, ANALYTICAL_EPHEMERIS, EarthOrientationProvider, ConstantOffsetEarthOrientation}` | Provider-neutral TT to geocentric apparent true-ecliptic-of-date state plus a separate epoch-indexed source of UT1, polar motion, authority, and data snapshot. The disclosed constant-offset source advances UT1 with TT while holding UT1-minus-TT and polar motion fixed. | Analytical and opt-in `JplVerifier` position implementations; committed Horizons fixtures exercise both provider seams. Earth-orientation identity and source failures are typed and tested. `JplVerifier` computes and retains the supplied kernel's SHA-256. | measured |
+| `provider::{GeocentricPositionProvider, AnalyticalEphemeris, ANALYTICAL_EPHEMERIS, EarthOrientationProvider, ConstantOffsetEarthOrientation}` | Provider-neutral TT to geocentric apparent true-ecliptic-of-date state plus a separate epoch-indexed source of UT1, polar motion, authority, and data snapshot. A position provider may disclose one homogeneous `Accuracy`; the default `None` means undisclosed rather than exact. The disclosed constant-offset source advances UT1 with TT while holding UT1-minus-TT and polar motion fixed. | Analytical and opt-in `JplVerifier` position implementations; the analytical provider exposes its measured 10-millidegree external angular cohort, while the verifier inherits the honest undisclosed default. Committed Horizons fixtures exercise both provider seams. Earth-orientation identity and source failures are typed and tested. `JplVerifier` computes and retains the supplied kernel's SHA-256. | measured |
 | `events::{SearchWindow, EventInterval, EclipticLongitudeConjunction, ecliptic_longitude_conjunctions}` | Searches two distinct bodies for apparent ecliptic-longitude equality. Sampling is limited to one TT day; tolerance is caller-selected and results are bounded TT intervals with midpoint great-circle separation plus provider model/snapshot identity. | 2024 eclipse: analytical midpoint 8.571 seconds from NASA's published conjunction, Horizons-fixture midpoint 4.469 seconds from NASA, providers differ by 4.102 seconds. Wrap, opposition, invalid-control, same-body, and provider-failure tests. | measured |
 | `events::{StationSearch, LongitudeMotion, EclipticLongitudeStation, ecliptic_longitude_stations}` | Searches sign changes in apparent ecliptic-longitude speed. Sampling, time tolerance, and the full central-difference span are explicit; each bounded TT result reports longitude, motion on both sides, provider identity, and the retained velocity span. | 2024 Mercury direct station over a six-hour difference: analytical and hourly Horizons-fixture midpoints differ by 0.659 seconds and longitudes by 0.0000441 degrees. Invalid-span, wrap, direction, interval, and provider-failure tests. | measured |
 | `events::{LunarPhase, LunarPhaseEvent, ecliptic_longitude_lunar_phases}` | Searches all four quarter angles of apparent Moon-minus-Sun ecliptic longitude and returns bounded TT intervals with midpoint great-circle separation and provider identity. | Four April 2024 phases checked against NASA GSFC's minute catalogue through analytical and Horizons providers. Worst provider difference 5.273 seconds; both lanes remain within 20 seconds of the published minute. Sequence, wrap, interval, and provider-failure tests. | measured |
@@ -147,8 +147,9 @@ modules form the primary API.
 ## Public constants and types
 
 The typed foundation's public constructors, conversions, and accessors are:
-`JulianDate::{from_parts, from_julian_day, from_epoch, from_utc_epoch, parts,
-day, offset_days}`; `TimeOffset::{from_seconds, seconds, days}`;
+`JulianDate::{from_parts, from_julian_day, from_epoch, to_epoch,
+from_utc_epoch, parts, day, offset_days}`; `TimeOffset::{from_seconds, seconds,
+days}`;
 `Angle::{from_radians, from_degrees, from_arcseconds, radians,
 degrees, arcseconds, abs}`; `Longitude`, `EastLongitude`, and `Latitude`
 constructors and angle/radian/degree accessors; `Length::{from_meters, meters,
@@ -200,5 +201,8 @@ without claiming observer visibility or local solar circumstances. The live
 DE440s receipt then executes every landed family over the real verifier. T4f
 and T4g add airless observer-altitude facts; T4h names only caller-threshold
 airless crossings and separately establishes topocentric meridian transits.
-Conventional rise/set policy, observer solar contacts, visibility, and further
-extrema remain explicit in `ROADMAP.md`.
+T4i adds conventional rise/set policy without converting it into a visibility
+claim. The first Sky-home consumer then forced the TT-to-epoch inverse and an
+optional provider-wide accuracy disclosure. Its cross-repository plan is owned
+at `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Observer solar
+contacts, visibility, and further extrema remain explicit in `ROADMAP.md`.

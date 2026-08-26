@@ -6,7 +6,7 @@
 use apparent::{self, ApparentBody, ApparentError, ANALYTICAL_APPARENT};
 use std::convert::Infallible;
 
-use foundation::{JulianDate, Model, State, TerrestrialTime, TrueEclipticEquinoxOfDate};
+use foundation::{Accuracy, JulianDate, Model, State, TerrestrialTime, TrueEclipticEquinoxOfDate};
 use observer::EarthOrientation;
 
 /// A provider of geocentric apparent states on the true ecliptic of date.
@@ -24,6 +24,16 @@ pub trait GeocentricPositionProvider {
 
     /// Runtime data snapshot used by the provider, when one exists.
     fn data_snapshot(&self) -> Option<&str> {
+        None
+    }
+
+    /// Measured or conformance accuracy shared by this provider's states.
+    ///
+    /// `None` means the provider does not disclose one homogeneous bound. It
+    /// does not mean zero error. Providers with result-specific accuracy can
+    /// continue returning it through their own API instead of flattening it
+    /// into this optional provider-wide claim.
+    fn accuracy(&self) -> Option<Accuracy> {
         None
     }
 
@@ -118,6 +128,10 @@ impl GeocentricPositionProvider for AnalyticalEphemeris {
 
     fn model(&self) -> Model {
         ANALYTICAL_APPARENT
+    }
+
+    fn accuracy(&self) -> Option<Accuracy> {
+        Some(apparent::analytical_accuracy())
     }
 
     fn position(

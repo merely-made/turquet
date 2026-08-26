@@ -14,7 +14,7 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.12.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.13.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
 ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
@@ -131,6 +131,7 @@ use turquet::foundation::{JulianDate, ScaleAwareEpoch, TerrestrialTime};
 
 let utc = ScaleAwareEpoch::from_gregorian_utc(2026, 8, 23, 12, 0, 0, 0);
 let tt = JulianDate::<TerrestrialTime>::from_epoch(utc);
+let _epoch_for_civil_display = tt.to_epoch();
 let sky = ApparentSky::at(tt);
 let moon = sky.position(ApparentBody::Moon)?;
 
@@ -154,12 +155,18 @@ correction.
 
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
-implements the same contract when the `verify` feature is enabled. T4 still
+implements the same contract when the `verify` feature is enabled. Providers
+may disclose a shared measured `Accuracy`; the analytical provider reports
+its external angular cohort while the default is honestly undisclosed. Typed
+TT results convert back to a scale-aware epoch through
+`JulianDate<TerrestrialTime>::to_epoch()` for consumer-side civil rendering.
+T4 still
 has bounded open slices for observer-relative solar contacts and local eclipse
 visibility, illuminated-fraction and distance facts/extrema, named twilight,
 and consumer-forced visibility windows. The first acceptance consumer is a
 Sky-home daily timeline; Cleromancy and an embedded solar-tracker profile
-follow the remaining event slices.
+follow the remaining event slices. That cross-repository consumer work is
+owned by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`.
 
 ## Verification
 

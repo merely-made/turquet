@@ -231,6 +231,9 @@ caller-threshold twilight; T4m admits only visibility windows forced by a real
 consumer's explicit policy. T5b then takes the Cleromancy interpretive
 projection, followed by T5c's bounded embedded solar-tracker profile. Terrain,
 weather, and social or presentation policy remain outside the engine.
+The cross-repository T5a implementation and done-conditions are owned by
+`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`; Turquet records
+only the engine seams that consumer forces.
 
 ## T5: Consumers and embedding
 
@@ -242,6 +245,13 @@ weather, and social or presentation policy remain outside the engine.
 The intended acceptance order is T5a Sky-home, T5b Cleromancy, then T5c's
 solar-tracker profile, with the bounded T4j through T4m event slices between
 T5a and T5b as described above.
+
+The active T5a plan lives at
+`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Its first engine
+pressure exposed two bounded public seams: converting retained TT values back
+to a scale-aware epoch for civil presentation, and querying an optional
+provider-wide accuracy disclosure without inventing one for providers whose
+evidence is result-specific or absent.
 
 Done when two materially different consumers reuse the same celestial state
 and derivation receipt without duplicating the calculation.

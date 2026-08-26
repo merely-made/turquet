@@ -31,6 +31,10 @@ altitude-circumstance, horizon, and meridian-event plans are archived under
 The T4i conventional rise/set plan is archived under
 `archive_docs/2026-08-25/`.
 Remaining event gates are canonical in `ROADMAP.md`.
+The cross-repository Sky-home consumer and its acceptance evidence are owned
+by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Turquet should
+cite that plan and record only the engine contracts it forces, not duplicate
+the consumer plan locally.
 
 ## Maintainer-owned project description
 

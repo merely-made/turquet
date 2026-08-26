@@ -119,7 +119,7 @@ impl ApparentSky {
         Ok(Modelled::new(
             State::new(self.epoch, direction, distance),
             ANALYTICAL_APPARENT,
-            apparent_accuracy(),
+            analytical_accuracy(),
         ))
     }
 }
@@ -407,7 +407,11 @@ fn moon_apparent(
     )
 }
 
-fn apparent_accuracy() -> Accuracy {
+/// Measured angular accuracy of the analytical apparent-position model.
+///
+/// This bound is angular only and applies to the stated external-comparison
+/// cohort. It is not a distance-error claim or a bound outside that scope.
+pub fn analytical_accuracy() -> Accuracy {
     Accuracy::new(
         Angle::from_degrees(0.010).expect("positive finite tolerance"),
         AccuracyEvidence::ExternalComparison,
