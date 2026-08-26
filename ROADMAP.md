@@ -286,10 +286,16 @@ focused tests and the headed day-change receipt landed in Turnstone at
 illumination and T4k-b supplies provider-neutral distance extrema. T4l names
 caller-threshold airless solar twilight. T4m remains a deferred,
 consumer-forced sampled airless-above-threshold window, not a visibility claim.
-T5b now takes the Cleromancy interpretive projection, followed by T5c's bounded
-embedded solar-tracker profile. Terrain, weather, and social or presentation
-policy remain outside the engine. Turquet records only the engine seams that
-consumers force.
+T5b's Cleromancy factual/interpretive projection was implemented at
+`cleromancy@92260e7271026ad834f55a75f14715b1df7e1681`; its source-boundary
+gates pass, while the application's existing Mere/Genet compatibility seam
+still blocks its full close/reopen acceptance command. T5c now adds the bounded
+`embedded/` solar-tracker profile: a dependency-free `no_std` vector core takes
+a canonical local Sun direction and a panel normal, returning only a requested
+direction and signed geometric incidence. Its host-side bridge consumes public
+`ObserverSky` output, not a duplicate ephemeris. Time/EOP, weather, shading,
+actuators, safety, control policy, terrain, and presentation remain outside the
+profile. See `receipts/2026-08-26_t5c_embedded_solar_tracker.md`.
 
 ## T5: Consumers and embedding
 

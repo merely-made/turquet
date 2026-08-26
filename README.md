@@ -178,6 +178,13 @@ ascension/declination, azimuth/altitude, and observer range. Atmospheric
 refraction remains an application-selected policy rather than an implicit
 correction.
 
+The separate [`embedded/`](embedded/) `turquet-embedded` package is a
+dependency-free `no_std` geometry profile, not a second astronomy engine. A
+host supplies Turquet's canonical local north-east-up Sun vector and a panel
+normal; the profile returns that desired Sun direction and a signed geometric
+incidence cosine. It computes neither time nor Earth orientation, and does not
+decide whether, when, or how hardware moves.
+
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`
 implements the same contract when the `verify` feature is enabled. Providers
