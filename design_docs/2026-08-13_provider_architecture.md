@@ -320,3 +320,17 @@ only the physical solar upper limb relative to the airless horizon at greatest
 eclipse. Lunar limb relief, refraction, terrain, obstruction, weather, eye
 safety, civil naming, and a general visibility-window policy remain outside
 this contract and therefore remain available for later consumer-forced slices.
+
+## T4k-a addendum: 2026-08-26
+
+`lunar_illumination_at` is a provider-neutral fact, not a new search family.
+It requests Sun and Moon apparent geocentric states at one typed TT epoch,
+rejects any returned state tagged with another epoch, and forms the
+Sun-Moon-Earth triangle in their shared frame. The retained fraction,
+elongation, phase angle, and three distances make its geometric basis replayable
+without turning it into a topocentric, limb, atmosphere, or human-visibility
+claim.
+
+Distance extrema remain a separate T4k-b contract because they introduce
+sampling controls, central-difference semantics, and bounded event intervals.
+Twilight and general visibility retain their own later policy boundaries.

@@ -32,6 +32,12 @@ pub use self::solar_eclipse::{
     LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCES, MAX_LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS,
 };
 
+mod lunar_illumination;
+pub use self::lunar_illumination::{
+    lunar_illumination_at, LunarIllumination, LunarIlluminationError,
+    GEOCENTRIC_LUNAR_ILLUMINATION,
+};
+
 const TWO_PI: f64 = 2.0 * PI;
 
 /// Maximum sampling step accepted by the current event searches.

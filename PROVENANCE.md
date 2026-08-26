@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.14.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.15.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -100,6 +100,30 @@ NASA's comparable maps are
 and <https://eclipse.gsfc.nasa.gov/SEgoogle/SEgoogle2001/SE2023Oct14Agoogle.html>.
 Horizons quantity definitions are in
 <https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+## T4k-a lunar illumination
+
+`tests/vectors/lunar_illumination_horizons.tsv` contains 30 paired Moon and
+Sun rows from NASA/JPL Horizons API 1.2, DE441, geocenter `500@399`, and EOP
+file `eop.260825.p261121`, captured on 2026-08-26. It covers five samples from
+12 hours before through 12 hours after NASA GSFC's April 2024 new, first-quarter,
+and full-Moon catalogue instants. The Moon query uses quantities 2, 10, 20, 23,
+24, 29, 31, and 32; the Sun query uses 2, 20, and 31. The fixture preserves the
+reported illuminated percentage, phase angle, solar elongation, apparent range,
+and apparent observer-centered ecliptic longitude/latitude. Regenerate it with
+`scripts/fetch_horizons_lunar_illumination_vectors.ps1`.
+
+Horizons labels these raw ecliptic state columns IAU76/80 ecliptic-of-date,
+whereas Turquet's typed analytical provider uses its disclosed IAU 2006/2000A
+path. The fixture is therefore a numerical reference adapter, not a claim that
+the frames are textual aliases. The test checks the fixture triangle against
+Horizons's independently reported illumination, phase, and elongation, then
+checks the analytical result against the same illumination field. It gates the
+fixture at 0.000010 fraction and the analytical result at 0.000015 fraction;
+it does not establish a global illumination accuracy bound. The result is a
+geocentric apparent triangle fact, not topocentric illumination, lunar limb
+relief, atmospheric transmission, or a visibility convention. Quantity
+definitions are in <https://ssd.jpl.nasa.gov/horizons/manual.html>.
 
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
 geocentric positions, DUT1, direct topocentric airless elevations, and direct
