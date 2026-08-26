@@ -334,3 +334,26 @@ claim.
 Distance extrema remain a separate T4k-b contract because they introduce
 sampling controls, central-difference semantics, and bounded event intervals.
 Twilight and general visibility retain their own later policy boundaries.
+
+## T4k-b addendum: 2026-08-26
+
+`geocentric_distance_extrema` is a provider-neutral event search over one
+body's apparent Earth-body range. `SearchWindow` owns typed TT start/end,
+sampling step, and interval tolerance; `GeocentricDistanceExtremumSearch` adds
+only the caller-selected, finite, positive central-difference span, capped at
+one TT day. The provider is intentionally queried half that span outside both
+window endpoints.
+
+At each sample it evaluates `r(t + h/2) - r(t - h/2)`. A negative-to-positive
+reversal yields a minimum, and positive-to-negative a maximum; each strict
+bracket is bisected into an `EventInterval`. An isolated exact zero requires
+opposite adjacent signs. Boundary zeros and flat zero plateaus are omitted so a
+one-sided or undefined derivative does not manufacture an event. The retained
+midpoint distance is evaluated at the interval midpoint, not a continuous bound
+or a proof of a global extremum. Likewise an empty result means only no sampled,
+bracketed reversal.
+
+This path accepts no observer, Earth orientation, refraction, limb, terrain, or
+visibility policy. It retains its own model revision plus provider model and
+snapshot, and rejects a provider state whose typed TT epoch differs from the
+request. Twilight and consumer-forced visibility remain separate policy slices.

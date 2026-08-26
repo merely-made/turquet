@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.15.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.16.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -123,6 +123,33 @@ fixture at 0.000010 fraction and the analytical result at 0.000015 fraction;
 it does not establish a global illumination accuracy bound. The result is a
 geocentric apparent triangle fact, not topocentric illumination, lunar limb
 relief, atmospheric transmission, or a visibility convention. Quantity
+definitions are in <https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+## T4k-b geocentric distance extrema
+
+`tests/vectors/distance_extrema_horizons.tsv` contains 77 six-hour rows from
+NASA/JPL Horizons API 1.2, DE441, geocenter `500@399`, and EOP file
+`eop.260825.p261121`, captured on 2026-08-26. It covers Moon perigee
+(2024-04-07 through 09), Moon apogee (2024-04-19 through 21), and Mars close
+approach (2022-11-25 through 12-08). Each row preserves UTC Julian Date,
+apparent range in AU, range rate in km/s, ecliptic longitude/latitude, and DUT1. Regenerate
+it with `scripts/fetch_horizons_distance_extrema_vectors.ps1`.
+
+The fixture provider linearly interpolates the captured range only to exercise
+the public provider seam. Its independent reference is the vertex of a
+three-point parabola through the raw surrounding Horizons ranges, not a claim
+that the linear adapter is a continuous ephemeris. The focused test gates that
+adapter within two hours and 200 km, and Turquet's analytical provider within
+600 seconds and 50 km, across the three named cases. The measured maxima are
+4,735.327 seconds and 159.186 km for the fixture adapter, and 368.322 seconds
+and 27.169 km for the analytical provider. Those are this small cohort's
+receipts, not global distance-extremum accuracy bounds.
+
+Horizons labels the retained raw ecliptic columns IAU76/80 ecliptic-of-date;
+Turquet's analytical provider retains its separately disclosed IAU 2006/2000A
+path. Distance itself is frame-independent here, and the ecliptic columns only
+construct the typed fixture state. This evidence does not establish an orbital,
+barycentric, topocentric, or visibility-distance contract. Horizons quantity
 definitions are in <https://ssd.jpl.nasa.gov/horizons/manual.html>.
 
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent

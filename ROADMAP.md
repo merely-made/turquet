@@ -250,13 +250,28 @@ the analytical fraction within 0.000015. This is not an observer-relative
 illumination, a lunar limb model, or a visibility claim. See
 `receipts/2026-08-26_t4k_a_lunar_illumination.md`.
 
+**Twelfth slice completed 2026-08-26.** `geocentric_distance_extrema` is a
+separate provider-neutral search over one supported body's apparent geocentric
+range. The caller selects the `SearchWindow` and full central-difference span;
+negative-to-positive range reversal is a minimum and positive-to-negative is a
+maximum. Results retain bounded TT intervals, an evaluated midpoint range, the
+selected span, revisioned extrema model, and provider model/snapshot. A returned
+state tagged with another TT epoch is a typed error. Boundary zeros and flat
+zero plateaus intentionally make no event, and an empty result establishes only
+that the selected samples found no bracketed reversal. A 77-row six-hour DE441/
+Horizons fixture covers Moon perigee, Moon apogee, and Mars close approach; its
+independent three-point references bound the analytical lane within 368.322
+seconds and 27.169 km. This is not an orbital, barycentric, topocentric, or
+visibility distance claim. See
+`receipts/2026-08-26_t4k_b_geocentric_distance_extrema.md`.
+
 T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
 `bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
 focused tests and the headed day-change receipt landed in Turnstone at
 `c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
 `turnstone/docs/receipts/sky_home_20260826/README.md`. T4k-a supplies lunar
-illumination; T4k-b next adds provider-neutral distance facts and extrema.
-T4l then names caller-threshold twilight, while T4m admits only visibility
+illumination and T4k-b supplies provider-neutral distance extrema. T4l next
+names caller-threshold twilight, while T4m admits only visibility
 windows forced by a real consumer's explicit policy. T5b takes the Cleromancy
 interpretive projection, followed by T5c's bounded embedded solar-tracker
 profile. Terrain, weather, and social or presentation policy remain outside the
@@ -269,8 +284,8 @@ engine. Turquet records only the engine seams that consumers force.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-T5a, T4j, and T4k-a are complete. The remaining acceptance order is T4k-b,
-T4l, and T4m, then T5b Cleromancy and T5c's bounded solar-tracker profile.
+T5a, T4j, T4k-a, and T4k-b are complete. The remaining acceptance order is
+T4l and T4m, then T5b Cleromancy and T5c's bounded solar-tracker profile.
 
 T5a's archived plan is
 `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.

@@ -38,6 +38,15 @@ pub use self::lunar_illumination::{
     GEOCENTRIC_LUNAR_ILLUMINATION,
 };
 
+mod distance_extrema;
+pub use self::distance_extrema::{
+    geocentric_distance_extrema, GeocentricDistanceExtremum,
+    GeocentricDistanceExtremumError, GeocentricDistanceExtremumKind,
+    GeocentricDistanceExtremumSearch, GeocentricDistanceExtremumSearchError,
+    GEOCENTRIC_APPARENT_DISTANCE_EXTREMA,
+    MAX_GEOCENTRIC_DISTANCE_EXTREMUM_DERIVATIVE_SPAN_DAYS,
+};
+
 const TWO_PI: f64 = 2.0 * PI;
 
 /// Maximum sampling step accepted by the current event searches.
