@@ -24,7 +24,7 @@ hifitime = "4.3"
 # crate is MIT-licensed and includes the additional SOFA terms that govern
 # its SOFA-derived routines; see PROVENANCE.md.
 sofars = "=0.6.1"
-anise = { git = "https://github.com/merely-made/anise.git", rev = "71e973a245e6701e14a5d4c88a3c4e7dedbf7702", version = "=0.10.6", default-features = false, optional = true }
+anise = { version = "=0.10.6", default-features = false, optional = true }
 sha2 = { version = "0.10", optional = true }
 
 [[bin]]
