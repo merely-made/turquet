@@ -1,0 +1,13 @@
+[package]
+name = "turquet-embedded"
+version = "0.1.0"
+edition = "2021"
+description = "No-std geometry core for Turquet embedded profiles"
+license = "MIT"
+repository = "https://github.com/merely-made/turquet"
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+turquet = { path = ".." }

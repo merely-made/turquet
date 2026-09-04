@@ -6,9 +6,10 @@
 //! T4 event searches currently cover apparent ecliptic-longitude conjunctions,
 //! stationary points, lunar quarter phases, eclipse candidates, lunar eclipse
 //! circumstances, airless observer-altitude crossings and extrema, sampled
-//! altitude-threshold circumstances, airless and caller-composed conventional
-//! rise/set naming, and topocentric meridian transits. Every event result is a
-//! bounded TT interval, not an isolated floating-point instant.
+//! altitude-threshold circumstances, airless rise/set and solar-twilight
+//! naming, caller-composed conventional rise/set, and topocentric meridian
+//! transits. Every event result is a bounded TT interval, not an isolated
+//! floating-point instant.
 
 use std::f64::consts::PI;
 use std::fmt;
@@ -22,6 +23,34 @@ use observer::{
     Observation, ObserverTransform, ObserverTransformError, AIRLESS_TOPOCENTRIC_TRANSFORM,
 };
 use provider::{EarthOrientationProvider, GeocentricPositionProvider};
+
+mod solar_eclipse;
+pub use self::solar_eclipse::{
+    local_solar_eclipse_circumstances, LocalSolarEclipseCircumstances, LocalSolarEclipseContact,
+    LocalSolarEclipseContactKind, LocalSolarEclipseError, LocalSolarEclipseGeometry,
+    LocalSolarEclipseKind, LocalSolarEclipseSearch, LocalSolarEclipseSearchError,
+    LocalSolarEclipseVisibility, LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCES,
+    MAX_LOCAL_SOLAR_ECLIPSE_CIRCUMSTANCE_SPAN_DAYS,
+};
+
+mod lunar_illumination;
+pub use self::lunar_illumination::{
+    lunar_illumination_at, LunarIllumination, LunarIlluminationError, GEOCENTRIC_LUNAR_ILLUMINATION,
+};
+
+mod distance_extrema;
+pub use self::distance_extrema::{
+    geocentric_distance_extrema, GeocentricDistanceExtremum, GeocentricDistanceExtremumError,
+    GeocentricDistanceExtremumKind, GeocentricDistanceExtremumSearch,
+    GeocentricDistanceExtremumSearchError, GEOCENTRIC_APPARENT_DISTANCE_EXTREMA,
+    MAX_GEOCENTRIC_DISTANCE_EXTREMUM_DERIVATIVE_SPAN_DAYS,
+};
+
+mod twilight;
+pub use self::twilight::{
+    airless_solar_twilight_events, SolarTwilightError, SolarTwilightEvent, SolarTwilightKind,
+    AIRLESS_SOLAR_TWILIGHT_NAMING,
+};
 
 const TWO_PI: f64 = 2.0 * PI;
 

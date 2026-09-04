@@ -14,13 +14,17 @@ coordinates.
 
 Turquet was founded in 2026 as a history-preserving adoption of Saurav
 Sachidanand's MIT-licensed
-[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.13.0` provides
+[`astro-rust`](https://github.com/saurvs/astro-rust). Version `0.17.0` provides
 Turquet's typed geocentric and observer-relative analytical ephemeris and
 its first provider-neutral event searches: bounded conjunctions, apparent
-ecliptic-longitude stations, lunar quarter phases, eclipse candidates, and
-lunar eclipse circumstances, plus observer-relative airless altitude
-crossings, named caller-threshold rise/set facts, extrema, sampled threshold
-circumstances, and separate upper/lower meridian transits.
+ecliptic-longitude stations, lunar quarter phases, eclipse candidates, lunar
+eclipse circumstances, and local solar-eclipse contacts, plus observer-relative
+airless altitude crossings, named caller-threshold rise/set and solar-twilight
+facts, extrema, sampled threshold circumstances, and separate upper/lower
+meridian transits.
+It also provides one provider-neutral, geocentric apparent lunar-illumination
+fact for a selected TT epoch and sampled, bounded extrema of any supported
+body's provider-supplied geocentric apparent range.
 The original 2015-era surface remains under `turquet::compat` for migration.
 
 The inherited implementation currently includes:
@@ -74,12 +78,33 @@ near-threshold cases without claiming continuous proof between samples.
 Search controls are explicit, and results are bounded TT intervals carrying
 position, transform, and Earth-orientation identities. Eclipse results retain
 a named spherical geometry revision and the terms that decide their class.
-Solar candidates mean a global alignment is possible after observer parallax;
-local type and visibility are not inferred. Lunar searches refine greatest
+Solar candidates mean a global alignment is possible after observer parallax.
+`local_solar_eclipse_circumstances` separately composes one observer transform
+for the Sun and Moon at each TT sample, then returns local partial, annular, or
+total fixed-spherical-limb geometry with C1--C4 contacts and an airless upper
+solar-limb horizon state at greatest eclipse. It is not a visibility-window
+claim: lunar limb relief, refraction, terrain, obstruction, weather, eye
+safety, and civil policy remain outside the result. Lunar searches refine greatest
 eclipse and the P1/P4, U1/U4, and U2/U3 contacts appropriate to penumbral,
 partial, and total events. Every landed algorithm is exercised with the
 analytical engine and committed NASA/JPL Horizons facts; geocentric families
 also run through a live caller-supplied JPL SPK kernel in the opt-in verifier.
+`lunar_illumination_at` separately composes same-epoch geocentric apparent Sun
+and Moon states into a named Sun-Moon-Earth triangle. It retains fraction,
+elongation, phase angle, all three distances, and provider provenance, and
+rejects a returned state with the wrong TT epoch. It is not a topocentric
+illumination, lunar-limb, atmospheric, or visibility result.
+`geocentric_distance_extrema` is a distinct, caller-controlled sampled search:
+it classifies the sign of a central difference of one body's apparent
+geocentric range, returns bounded minimum or maximum intervals, and retains the
+evaluated midpoint range plus provider provenance. Its result is neither an
+orbital or barycentric distance extremum nor a topocentric or visibility fact;
+an empty result means no sampled, bracketed reversal was found.
+`airless_solar_twilight_events` separately names a caller-selected airless
+Sun-center crossing: ascending is `Dawn`, descending is `Dusk`. It chooses no
+standard twilight band, refraction, limb, horizon dip, civil date, terrain,
+weather, luminance, or visibility policy; the nested crossing retains the
+chosen threshold and complete provenance.
 Airless `Rise` and `Set` name only a caller-selected center-altitude crossing:
 they do not select refraction, limb, horizon, terrain, civil, or visibility
 policy. Meridian transits are separate roots of topocentric apparent local
@@ -152,6 +177,13 @@ sample. Outputs retain the data identity and expose topocentric right
 ascension/declination, azimuth/altitude, and observer range. Atmospheric
 refraction remains an application-selected policy rather than an implicit
 correction.
+
+The separate [`embedded/`](embedded/) `turquet-embedded` package is a
+dependency-free `no_std` geometry profile, not a second astronomy engine. A
+host supplies Turquet's canonical local north-east-up Sun vector and a panel
+normal; the profile returns that desired Sun direction and a signed geometric
+incidence cosine. It computes neither time nor Earth orientation, and does not
+decide whether, when, or how hardware moves.
 
 Event searches use `provider::AnalyticalEphemeris` by default and accept any
 implementation of `GeocentricPositionProvider`. The opt-in `JplVerifier`

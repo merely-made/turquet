@@ -224,16 +224,78 @@ solar limb agrees with its April 8 Boston minute times through the independent
 Horizons fixture; the Moon uses a dynamic topocentric semidiameter without a
 second parallax correction. See `receipts/2026-08-25_t4i_conventional_rise_set.md`.
 
-T5a is the first consumer gate: a Sky-home daily timeline. T4j then takes
-observer-relative solar contacts and local geometric eclipse visibility. T4k
-adds illuminated-fraction and distance facts and extrema; T4l names
-caller-threshold twilight; T4m admits only visibility windows forced by a real
-consumer's explicit policy. T5b then takes the Cleromancy interpretive
-projection, followed by T5c's bounded embedded solar-tracker profile. Terrain,
-weather, and social or presentation policy remain outside the engine.
-The cross-repository T5a implementation and done-conditions are owned by
-`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`; Turquet records
-only the engine seams that consumer forces.
+**Tenth slice completed 2026-08-26.** `local_solar_eclipse_circumstances`
+finds strict observer-relative disk overlap around each new-moon phase. It
+reuses one WGS84 airless observer transform for the Sun and Moon at every TT
+sample, returns bounded greatest and C1--C4 contact intervals, local partial,
+annular, or total class, fixed-spherical-limb geometry, and an explicit
+upper-solar-limb airless-horizon state at greatest eclipse. The model uses the
+IAU nominal solar and mean lunar radii; it excludes limb relief, refraction,
+terrain, obstruction, weather, eye safety, and a general visibility window.
+Boston partial, Dallas total, and Albuquerque annular analytical maxima are
+within 11.630 seconds of published local circumstances. A 2,950-row DE441/
+Horizons fixture independently exercises those classes, Galway's below-horizon
+geometry, and the Cape Town no-overlap control; direct Sun-altitude residuals
+are at most 0.00648 degrees. See
+`receipts/2026-08-26_t4j_local_solar_eclipse_circumstances.md`.
+
+**Eleventh slice completed 2026-08-26.** `lunar_illumination_at` derives a
+single geocentric apparent lunar illuminated fraction from same-TT Sun and Moon
+provider states. It retains Sun-Moon elongation, the phase angle at the Moon,
+the Earth-Moon, Earth-Sun, and Moon-Sun distances, its revisioned triangle
+model, and provider model/snapshot. A mismatched returned-state epoch is a
+typed error. Thirty paired DE441/Horizons rows around new, first-quarter, and
+full Moon independently gate the direct fixture triangle within 0.000010 and
+the analytical fraction within 0.000015. This is not an observer-relative
+illumination, a lunar limb model, or a visibility claim. See
+`receipts/2026-08-26_t4k_a_lunar_illumination.md`.
+
+**Twelfth slice completed 2026-08-26.** `geocentric_distance_extrema` is a
+separate provider-neutral search over one supported body's apparent geocentric
+range. The caller selects the `SearchWindow` and full central-difference span;
+negative-to-positive range reversal is a minimum and positive-to-negative is a
+maximum. Results retain bounded TT intervals, an evaluated midpoint range, the
+selected span, revisioned extrema model, and provider model/snapshot. A returned
+state tagged with another TT epoch is a typed error. Boundary zeros and flat
+zero plateaus intentionally make no event, and an empty result establishes only
+that the selected samples found no bracketed reversal. A 77-row six-hour DE441/
+Horizons fixture covers Moon perigee, Moon apogee, and Mars close approach; its
+independent three-point references bound the analytical lane within 368.322
+seconds and 27.169 km. This is not an orbital, barycentric, topocentric, or
+visibility distance claim. See
+`receipts/2026-08-26_t4k_b_geocentric_distance_extrema.md`.
+
+**Thirteenth slice completed 2026-08-26.** `airless_solar_twilight_events`
+names one caller-selected existing airless Sun-center crossing: ascending is
+`Dawn`, descending is `Dusk`. It takes the same explicit
+`AltitudeCrossingSearch` as the underlying solver, so the threshold, one-hour
+sampling ceiling, TT tolerance, and error boundaries remain caller-owned. Each
+event retains its nested crossing and a revisioned naming model. It chooses no
+conventional band, refraction, limb, horizon dip, civil date, terrain, weather,
+luminance, or visibility policy. Boston's -6, -12, and -18 degree pairs run
+through both fixture and analytical lanes against direct five-minute Horizons
+quantity-4 altitude roots; all twelve comparisons are within 0.420 seconds.
+Tromso's midsummer Sun is the empty control. See
+`receipts/2026-08-26_t4l_airless_solar_twilight.md`.
+
+T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
+`bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
+focused tests and the headed day-change receipt landed in Turnstone at
+`c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
+`turnstone/docs/receipts/sky_home_20260826/README.md`. T4k-a supplies lunar
+illumination and T4k-b supplies provider-neutral distance extrema. T4l names
+caller-threshold airless solar twilight. T4m remains a deferred,
+consumer-forced sampled airless-above-threshold window, not a visibility claim.
+T5b's Cleromancy factual/interpretive projection was implemented at
+`cleromancy@92260e7271026ad834f55a75f14715b1df7e1681`; its source-boundary
+gates pass, while the application's existing Mere/Genet compatibility seam
+still blocks its full close/reopen acceptance command. T5c now adds the bounded
+`embedded/` solar-tracker profile: a dependency-free `no_std` vector core takes
+a canonical local Sun direction and a panel normal, returning only a requested
+direction and signed geometric incidence. Its host-side bridge consumes public
+`ObserverSky` output, not a duplicate ephemeris. Time/EOP, weather, shading,
+actuators, safety, control policy, terrain, and presentation remain outside the
+profile. See `receipts/2026-08-26_t5c_embedded_solar_tracker.md`.
 
 ## T5: Consumers and embedding
 
@@ -242,16 +304,16 @@ only the engine seams that consumer forces.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-The intended acceptance order is T5a Sky-home, T5b Cleromancy, then T5c's
-solar-tracker profile, with the bounded T4j through T4m event slices between
-T5a and T5b as described above.
+T5a, T4j, T4k-a, T4k-b, and T4l are complete. The next acceptance proof is
+T5b Cleromancy, followed by T5c's bounded solar-tracker profile. T4m remains
+deferred until a consumer forces a sampled geometric availability window.
 
-The active T5a plan lives at
-`turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Its first engine
-pressure exposed two bounded public seams: converting retained TT values back
-to a scale-aware epoch for civil presentation, and querying an optional
-provider-wide accuracy disclosure without inventing one for providers whose
-evidence is result-specific or absent.
+T5a's archived plan is
+`turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
+Its first engine pressure exposed two bounded public seams: converting retained
+TT values back to a scale-aware epoch for civil presentation, and querying an
+optional provider-wide accuracy disclosure without inventing one for providers
+whose evidence is result-specific or absent.
 
 Done when two materially different consumers reuse the same celestial state
 and derivation receipt without duplicating the calculation.

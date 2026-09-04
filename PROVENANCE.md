@@ -27,7 +27,7 @@ independent comparison.
 
 ## IAU orientation model
 
-Turquet 0.13.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
+Turquet 0.17.0 uses `sofars` 0.6.1 for the numerical IAU 2006 precession and
 IAU 2000A nutation series. `sofars` is a pure-Rust implementation derived from
 the IAU Standards of Fundamental Astronomy collection. Its crate metadata is
 MIT, and its distribution reproduces the additional SOFA terms governing the
@@ -72,6 +72,86 @@ Definitions: <https://aa.usno.navy.mil/faq/RST_defs>. API documentation:
 one-day request URLs, their coordinate/time-zone parameters, the API revision,
 and the four extracted minute values.
 
+## T4j local solar-eclipse circumstances
+
+`tests/vectors/local_solar_eclipse_horizons.tsv` contains 2,950 five-minute
+DE441 rows captured from NASA/JPL Horizons API 1.2 on 2026-08-26. It supplies
+geocentric apparent ecliptic longitude, latitude, and range through quantities
+20 and 31, plus site-specific airless azimuth/elevation, local apparent hour
+angle, and DUT1 through quantities 4, 42, and 49. The five fixed WGS84 sites
+are Boston partial, Dallas total, Albuquerque annular, Galway low-altitude
+partial, and Cape Town outside the local footprint. The fixture's
+`eop.260825.p261121` header is retained; tests interpolate DUT1 and explicitly
+record their zero-polar-motion approximation while direct Horizons altitudes
+retain the source path. Regenerate it with
+`scripts/fetch_horizons_local_solar_eclipse_vectors.ps1`.
+
+The independent event references are the U.S. Naval Observatory Solar Eclipse
+Computer and NASA GSFC local Besselian circumstance tables. The USNO endpoint
+documents UT1 output and its limb convention, while T4j instead discloses its
+fixed IAU nominal solar and mean lunar spherical radii. The test keeps that
+model distinction visible rather than presenting a limb-profile, refraction,
+terrain, weather, or human-visibility comparison as an engine result. Reference
+requests: <https://aa.usno.navy.mil/api/eclipses/solar/date?date=2024-4-8&coords=42.3601,-71.0589&height=43>,
+<https://aa.usno.navy.mil/api/eclipses/solar/date?date=2024-4-8&coords=32.7767,-96.7970&height=0>,
+and <https://aa.usno.navy.mil/api/eclipses/solar/date?date=2023-10-14&coords=35.0844,-106.6504&height=0>.
+NASA's comparable maps are
+<https://eclipse.gsfc.nasa.gov/SEgoogle/SEgoogle2001/SE2024Apr08Tgoogle.html>
+and <https://eclipse.gsfc.nasa.gov/SEgoogle/SEgoogle2001/SE2023Oct14Agoogle.html>.
+Horizons quantity definitions are in
+<https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+## T4k-a lunar illumination
+
+`tests/vectors/lunar_illumination_horizons.tsv` contains 30 paired Moon and
+Sun rows from NASA/JPL Horizons API 1.2, DE441, geocenter `500@399`, and EOP
+file `eop.260825.p261121`, captured on 2026-08-26. It covers five samples from
+12 hours before through 12 hours after NASA GSFC's April 2024 new, first-quarter,
+and full-Moon catalogue instants. The Moon query uses quantities 2, 10, 20, 23,
+24, 29, 31, and 32; the Sun query uses 2, 20, and 31. The fixture preserves the
+reported illuminated percentage, phase angle, solar elongation, apparent range,
+and apparent observer-centered ecliptic longitude/latitude. Regenerate it with
+`scripts/fetch_horizons_lunar_illumination_vectors.ps1`.
+
+Horizons labels these raw ecliptic state columns IAU76/80 ecliptic-of-date,
+whereas Turquet's typed analytical provider uses its disclosed IAU 2006/2000A
+path. The fixture is therefore a numerical reference adapter, not a claim that
+the frames are textual aliases. The test checks the fixture triangle against
+Horizons's independently reported illumination, phase, and elongation, then
+checks the analytical result against the same illumination field. It gates the
+fixture at 0.000010 fraction and the analytical result at 0.000015 fraction;
+it does not establish a global illumination accuracy bound. The result is a
+geocentric apparent triangle fact, not topocentric illumination, lunar limb
+relief, atmospheric transmission, or a visibility convention. Quantity
+definitions are in <https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
+## T4k-b geocentric distance extrema
+
+`tests/vectors/distance_extrema_horizons.tsv` contains 77 six-hour rows from
+NASA/JPL Horizons API 1.2, DE441, geocenter `500@399`, and EOP file
+`eop.260825.p261121`, captured on 2026-08-26. It covers Moon perigee
+(2024-04-07 through 09), Moon apogee (2024-04-19 through 21), and Mars close
+approach (2022-11-25 through 12-08). Each row preserves UTC Julian Date,
+apparent range in AU, range rate in km/s, ecliptic longitude/latitude, and DUT1. Regenerate
+it with `scripts/fetch_horizons_distance_extrema_vectors.ps1`.
+
+The fixture provider linearly interpolates the captured range only to exercise
+the public provider seam. Its independent reference is the vertex of a
+three-point parabola through the raw surrounding Horizons ranges, not a claim
+that the linear adapter is a continuous ephemeris. The focused test gates that
+adapter within two hours and 200 km, and Turquet's analytical provider within
+600 seconds and 50 km, across the three named cases. The measured maxima are
+4,735.327 seconds and 159.186 km for the fixture adapter, and 368.322 seconds
+and 27.169 km for the analytical provider. Those are this small cohort's
+receipts, not global distance-extremum accuracy bounds.
+
+Horizons labels the retained raw ecliptic columns IAU76/80 ecliptic-of-date;
+Turquet's analytical provider retains its separately disclosed IAU 2006/2000A
+path. Distance itself is frame-independent here, and the ecliptic columns only
+construct the typed fixture state. This evidence does not establish an orbital,
+barycentric, topocentric, or visibility-distance contract. Horizons quantity
+definitions are in <https://ssd.jpl.nasa.gov/horizons/manual.html>.
+
 `tests/vectors/altitude_crossings_horizons.tsv` contains five-minute apparent
 geocentric positions, DUT1, direct topocentric airless elevations, and direct
 local apparent hour angles from NASA/JPL Horizons API 1.2 and DE441. It covers
@@ -103,6 +183,30 @@ transform through the reference path. Turquet's local meridian itself is
 formed from IAU 2006/2000A GAST and `sofars`/SOFA `apio`'s
 TIO-and-polar-motion-adjusted longitude. The canonical IAU SOFA 2023
 `iauApio` validation vector is a unit control for that seam.
+
+## T4l airless solar twilight
+
+T4l reuses the existing altitude-crossing fixture and capture script without a
+new external capture. Its narrow test adapter admits only the five-minute
+Boston Sun and Tromso Sun rows. It converts every captured UTC Julian Date with
+`ScaleAwareEpoch::from_jde_utc` before storing a typed TT epoch, and separately
+converts Horizons DUT1 into the typed UT1 epoch used by the Earth-orientation
+provider. Direct quantity-4 airless-altitude roots are linearly interpolated
+only after that UTC-to-TT conversion.
+
+Boston's -6, -12, and -18 degree threshold pairs run through both the fixture
+and analytical position lanes. Each of the twelve named results is within the
+separate 0.5-second gate from its direct quantity-4 reference; the measured
+maximum is 0.420 seconds. Tromso midsummer is the high-latitude empty control.
+The raw Horizons ecliptic state columns remain an IAU76/80 numerical adapter,
+not an assertion that they are textual aliases of Turquet's analytical IAU
+2006/2000A path; the direct quantity-4 altitude is the independent authority.
+The fixture continues to disclose its zero-polar-motion approximation and EOP
+snapshot boundary.
+
+This evidence names only caller-chosen airless Sun-center crossings. It does
+not validate a conventional twilight band, refraction, limb, horizon dip, civil
+date, terrain, weather, luminance, or human-visibility convention.
 
 `tests/vectors/eclipse_conjunction_horizons.tsv` contains geocentric apparent
 Sun and Moon positions generated from the NASA/JPL Horizons API on 2026-08-23

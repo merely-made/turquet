@@ -35,6 +35,8 @@ The cross-repository Sky-home consumer and its acceptance evidence are owned
 by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Turquet should
 cite that plan and record only the engine contracts it forces, not duplicate
 the consumer plan locally.
+- [2026-08-26_t5c_embedded_solar_tracker_plan.md](2026-08-26_t5c_embedded_solar_tracker_plan.md):
+  landed core-only solar-tracker vector profile and its Turquet bridge.
 
 ## Maintainer-owned project description
 

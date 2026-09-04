@@ -302,3 +302,72 @@ provider-wide bound. Its default is `None`, meaning undisclosed rather than
 exact. `AnalyticalEphemeris` returns the measured 10-millidegree angular bound
 for its 5,277-vector DE440s cohort. The verifier retains `None` because kernel
 identity alone does not establish one uniform provider-wide accuracy claim.
+
+## T4j addendum: 2026-08-26
+
+`local_solar_eclipse_circumstances` is a separate observer-relative family,
+not a reclassification of geocentric `EclipseCandidate`. It first finds
+provider-owned new-moon phase intervals, then at every evaluation acquires the
+Sun and Moon states plus one epoch-indexed Earth orientation and applies the
+same WGS84 airless `ObserverTransform` to both bodies. This prevents a second
+parallax correction and keeps UT1, polar motion, and transform provenance in
+the result.
+
+The revision-1 geometry uses a fixed IAU nominal solar radius and Turquet's
+mean lunar radius. It solves strict disk overlap, bounded greatest and C1--C4
+contacts, and partial, annular, or total local class. Its visibility fact is
+only the physical solar upper limb relative to the airless horizon at greatest
+eclipse. Lunar limb relief, refraction, terrain, obstruction, weather, eye
+safety, civil naming, and a general visibility-window policy remain outside
+this contract and therefore remain available for later consumer-forced slices.
+
+## T4k-a addendum: 2026-08-26
+
+`lunar_illumination_at` is a provider-neutral fact, not a new search family.
+It requests Sun and Moon apparent geocentric states at one typed TT epoch,
+rejects any returned state tagged with another epoch, and forms the
+Sun-Moon-Earth triangle in their shared frame. The retained fraction,
+elongation, phase angle, and three distances make its geometric basis replayable
+without turning it into a topocentric, limb, atmosphere, or human-visibility
+claim.
+
+Distance extrema remain a separate T4k-b contract because they introduce
+sampling controls, central-difference semantics, and bounded event intervals.
+Twilight and general visibility retain their own later policy boundaries.
+
+## T4k-b addendum: 2026-08-26
+
+`geocentric_distance_extrema` is a provider-neutral event search over one
+body's apparent Earth-body range. `SearchWindow` owns typed TT start/end,
+sampling step, and interval tolerance; `GeocentricDistanceExtremumSearch` adds
+only the caller-selected, finite, positive central-difference span, capped at
+one TT day. The provider is intentionally queried half that span outside both
+window endpoints.
+
+At each sample it evaluates `r(t + h/2) - r(t - h/2)`. A negative-to-positive
+reversal yields a minimum, and positive-to-negative a maximum; each strict
+bracket is bisected into an `EventInterval`. An isolated exact zero requires
+opposite adjacent signs. Boundary zeros and flat zero plateaus are omitted so a
+one-sided or undefined derivative does not manufacture an event. The retained
+midpoint distance is evaluated at the interval midpoint, not a continuous bound
+or a proof of a global extremum. Likewise an empty result means only no sampled,
+bracketed reversal.
+
+This path accepts no observer, Earth orientation, refraction, limb, terrain, or
+visibility policy. It retains its own model revision plus provider model and
+snapshot, and rejects a provider state whose typed TT epoch differs from the
+request. Twilight and consumer-forced visibility remain separate policy slices.
+
+## T4l addendum: 2026-08-26
+
+`airless_solar_twilight_events` deliberately adds no solver. It accepts the
+existing caller-owned `AltitudeCrossingSearch`, fixes the body to the Sun, and
+names an ascending airless center crossing `Dawn` and a descending one `Dusk`.
+The nested crossing retains the bounded TT interval, threshold, observer,
+provider, WGS84 transform, and Earth-orientation provenance; the wrapper adds a
+revisioned naming model only.
+
+It selects no standard twilight band or default threshold, and adds no
+refraction, limb, horizon dip, civil date, terrain, obstruction, weather,
+luminance, or visibility convention. Empty retains the underlying sampled
+crossing meaning. General visibility stays a separate T4m policy slice.
