@@ -27,7 +27,6 @@ use turquet::compat::*;
 
 #[test]
 fn ephemeris() {
-
     let JD = 2448935.500638;
     let mut ephemeris = planet::mars::ephemeris(
         JD,
@@ -39,9 +38,7 @@ fn ephemeris() {
 
     ephemeris.De = util::round_upto_digits(ephemeris.De.to_degrees(), 2);
     ephemeris.Ds = util::round_upto_digits(ephemeris.Ds.to_degrees(), 2);
-    ephemeris.P = util::round_upto_digits (
-        angle::limit_to_360(ephemeris.P.to_degrees()), 2
-    );
+    ephemeris.P = util::round_upto_digits(angle::limit_to_360(ephemeris.P.to_degrees()), 2);
     ephemeris.w = util::round_upto_digits(ephemeris.w.to_degrees(), 1);
 
     assert_eq!(ephemeris.De, 12.44);

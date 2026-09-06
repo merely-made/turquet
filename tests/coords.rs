@@ -41,11 +41,7 @@ fn east_positive_longitude_advances_local_sidereal_time() {
     let right_ascension = 0.75;
 
     assert_close(
-        coords::hr_angl_frm_observer_long(
-            greenwich_sidereal,
-            east_longitude,
-            right_ascension,
-        ),
+        coords::hr_angl_frm_observer_long(greenwich_sidereal, east_longitude, right_ascension),
         0.5,
         1e-15,
     );
