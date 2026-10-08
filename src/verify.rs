@@ -188,5 +188,21 @@ fn sha256_file(path: &str) -> Result<String, VerifyError> {
         }
         hasher.update(&buffer[..read]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
+}
+
+#[cfg(test)]
+mod checksum_tests {
+    #[test]
+    fn kernel_checksum_keeps_canonical_sha256_text() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/vectors/sha256_abc.bin");
+        assert_eq!(
+            super::sha256_file(path).unwrap(),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
 }
