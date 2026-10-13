@@ -1,4 +1,5 @@
 [package]
+rust-version = "1.97.1"
 name = "turquet-embedded"
 version = "0.1.0"
 edition = "2021"
