@@ -25,3 +25,5 @@ interpretation and admission remain consumer-owned.
 2026-10-17: source `4c27a6b` passes 139 default tests/doctests (0 ignored), including 18 independent Swiss geometry rows at a 0.002-degree bound and typed-time compile-fail checks. Receipt: `receipts/2026-10-17_natal_houses_qualification.json`. Earlier failed generated-fixture literal build remains external diagnostic evidence.
 
 2026-10-17: independent review found Equal cusp 1 could differ from its retained ascendant by a radian rounding ULP. The corrected edition retains the original Longitude exactly and tests house 12/1 immediately before/at/after that boundary. Consumer editions pin the immutable supplier revision. Earlier source and tests retain their identities.
+
+2026-10-17: corrected source `e2f65c0` passes all 139 default tests/doctests, zero ignores, including the independent Swiss fixtures and exact-boundary regression. Earlier `4c27a6b` evidence remains unchanged. Consumer native qualification remains separately owned by Cleromancy.

@@ -1,0 +1,18 @@
+{
+  "source": "e2f65c021a6bf744ab5fe77121e0441a46b47306",
+  "default_suite": {
+    "passed": 139,
+    "ignored": 0
+  },
+  "log_sha256": "2a5af629bf91e27760340dee5b2c57eda9738fd1cc60b8606212d5c497d2a7d1",
+  "oracle_rows": 18,
+  "oracle_tolerance_degrees": 0.002,
+  "corrections": [
+    "Equal cusp 1 is the original ascendant Longitude, without degree/radian round trip",
+    "Before/at/after exact ascendant checks in hemispheric/quadrant matrix"
+  ],
+  "limits": [
+    "Default tests/doctests only; not verify-feature/JPL-kernel renewal",
+    "UT1 supplied explicitly by consumer; no automatic observational EOP"
+  ]
+}
