@@ -40,3 +40,13 @@ The corrected supplier's locked build inputs are retained in
 `receipts/2026-10-17_natal_houses_build_inputs.json`. Original planetary/natal
 receipts and earlier supplier evidence remain unchanged. Placidus, observed EOP
 and wider platform qualification are outside this bounded slice.
+
+2026-10-17: Mark authorized the next cap: signed apparent longitudinal motion,
+retained observed Earth orientation, and Placidus. New optional numerical
+contracts preserve the original Whole Sign/Equal path. The observed horizon
+uses both angular corrections from the inverse IAU polar-motion rotation of
+the geodetic zenith; no ephemeris or EOP source is fetched by a calculation.
+Placidus divides semi-arcs, rejects polar/unsolved geometry, and never returns
+another house system. Independent motion and house oracle files and retained
+IERS final-observation excerpts qualify the bounded numerical slice separately
+from Cleromancy's consumer, resident and native gates, which remain pending.

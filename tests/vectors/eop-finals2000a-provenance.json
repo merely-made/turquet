@@ -1,0 +1,34 @@
+{
+  "source_url": "https://maia.usno.navy.mil/ser7/finals2000A.all",
+  "retrieved_utc": "2026-10-17T07:11:21.539871+00:00",
+  "source_sha256": "bfa2066aab0400b075357f573af6081e0068a518993609eee0c5ca991bab0845",
+  "source_bytes": 3769212,
+  "excerpt_file": "eop-finals2000a-observed.txt",
+  "excerpt_sha256": "c0e898a9a167fc69eade0e7b515f5b6aee4bd2c2ca49251ed8e9caf03a7a633b",
+  "source_line_numbers": [
+    16068,
+    16069,
+    16070,
+    16071,
+    16072,
+    16073,
+    17166,
+    17167,
+    17168
+  ],
+  "selection": "Unmodified full rows: UTC MJD 57751..57756 (2016 leap boundary) and 58849..58851 (2020 ordinary interval). The gap is intentional. Original whitespace and line endings retained.",
+  "format_url": "https://maia.usno.navy.mil/ser7/readme.finals2000A",
+  "format_file": "eop-readme.finals2000A.txt",
+  "format_sha256": "3efb2c610012360391aed5c057489ff74539b78494a66b7f9b342d1843db9254",
+  "quantity_selection": "Bulletin B columns 135..144 xp arcsec; 145..154 yp arcsec; 155..165 UT1-UTC seconds. Bulletin A errors are not Bulletin B errors.",
+  "century_excerpt": {
+    "file": "eop-finals2000a-century.txt",
+    "sha256": "3d9180e4c6b421eef034bbf64ef2d2658d0272782ecc3e23eeb78dcb9a266b28",
+    "source_line_numbers": [
+      9860,
+      9861,
+      9862
+    ],
+    "selection": "Unmodified rows UTC MJD 51543..51545: 1999/2000 year interpretation boundary."
+  }
+}
