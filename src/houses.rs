@@ -121,7 +121,13 @@ fn geometry(theta: f64, epsilon: f64, phi: f64, system: HouseSystem) -> Result<H
         HouseSystem::WholeSign => (ascendant.degrees() / 30.0).floor() * 30.0,
         HouseSystem::Equal => ascendant.degrees(),
     };
-    let cusps = std::array::from_fn(|i| Longitude::from_degrees(first + i as f64 * 30.0).unwrap());
+    let mut cusps =
+        std::array::from_fn(|i| Longitude::from_degrees(first + i as f64 * 30.0).unwrap());
+    // Retain the exact angular value at the defining Equal cusp. A degrees
+    // round trip can otherwise put the ascendant infinitesimally before cusp 1.
+    if system == HouseSystem::Equal {
+        cusps[0] = ascendant;
+    }
     Ok(Houses {
         system,
         ascendant,
@@ -154,6 +160,9 @@ mod tests {
                 let eps = 23.4_f64.to_radians();
                 let h = geometry(theta, eps, phi, HouseSystem::Equal).unwrap();
                 let l = h.ascendant().radians();
+                assert_eq!(h.house_of(h.ascendant()), 1);
+                assert_eq!(h.house_of(Longitude::from_radians(l - 1e-10).unwrap()), 12);
+                assert_eq!(h.house_of(Longitude::from_radians(l + 1e-10).unwrap()), 1);
                 let altitude = |t: f64| {
                     phi.cos() * t.cos() * l.cos()
                         + (phi.cos() * t.sin() * eps.cos() + phi.sin() * eps.sin()) * l.sin()
