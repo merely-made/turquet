@@ -1,0 +1,7 @@
+{
+  "source": "e2f65c021a6bf744ab5fe77121e0441a46b47306",
+  "compiler": "Cargo 1.99; explicit rustc/rustdoc 1.97.1 aarch64-apple-darwin",
+  "lock_snapshot": "2026-10-17_natal_houses_corrected_Cargo.lock",
+  "lock_sha256": "c59b3a45d9aef159f18ac329289b8b776fd085b758db26295783f0cc2358529a",
+  "scope": "Default library/tests/doctests and independent houses geometry fixtures. Snapshot of the unchanged lock used by the corrected locked gate; no verify-feature or embedded bridge renewal."
+}

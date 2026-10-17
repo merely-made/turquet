@@ -1,6 +1,6 @@
 # Tropical ascendant and house geometry
 
-**Status (2026-10-17):** supplier geometry qualified; Cleromancy consumer qualification in progress.
+**Status (2026-10-17):** supplier geometry and bounded Cleromancy consumer qualification complete; broader house systems remain separate.
 
 ## Findings
 
@@ -27,3 +27,16 @@ interpretation and admission remain consumer-owned.
 2026-10-17: independent review found Equal cusp 1 could differ from its retained ascendant by a radian rounding ULP. The corrected edition retains the original Longitude exactly and tests house 12/1 immediately before/at/after that boundary. Consumer editions pin the immutable supplier revision. Earlier source and tests retain their identities.
 
 2026-10-17: corrected source `e2f65c0` passes all 139 default tests/doctests, zero ignores, including the independent Swiss fixtures and exact-boundary regression. Earlier `4c27a6b` evidence remains unchanged. Consumer native qualification remains separately owned by Cleromancy.
+
+2026-10-17: Cleromancy source `ca562db` is qualified and published with evidence
+at main `1e1635c9554546aa366d032b533c6e794297bd7c`: 139/188 product tests,
+portable core 49/50/51, four all-target checks and four native processes with
+thirteen reviewed originals. Whole Sign/Equal and missing-coordinate outcomes
+retain exact saved natal/reflection values after fresh-process offline reopening.
+Canonical consumer evidence: `cleromancy/receipts/natal-houses-qualification_20261017.json`.
+Mere main `34f7f08db` imports the immutable core and qualifies cross-application
+admission/refusal plus owner reopening after preserving incoming shared edits.
+The corrected supplier's locked build inputs are retained in
+`receipts/2026-10-17_natal_houses_build_inputs.json`. Original planetary/natal
+receipts and earlier supplier evidence remain unchanged. Placidus, observed EOP
+and wider platform qualification are outside this bounded slice.
