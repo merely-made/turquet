@@ -1,0 +1,662 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling autocfg v1.5.1
+   Compiling libm v0.2.16
+   Compiling lexical-util v1.0.7
+   Compiling serde_core v1.0.229
+   Compiling num-traits v0.2.19
+   Compiling lexical-parse-integer v1.0.6
+   Compiling serde v1.0.229
+   Compiling heck v0.5.0
+   Compiling syn v2.0.119
+   Compiling syn v3.0.9
+   Compiling lexical-parse-float v1.0.6
+   Compiling lexical-core v1.0.6
+   Compiling web-time v1.1.0
+   Compiling sofars v0.6.1
+   Compiling snafu-derive v0.9.2
+   Compiling serde_derive v1.0.229
+   Compiling snafu v0.9.2
+   Compiling hifitime v4.3.1
+   Compiling turquet v0.17.0 (/Users/markik/Code/repos/turquet)
+warning: unnecessary parentheses around block return value
+   --> src/lunar.rs:823:5
+    |
+823 |     (2451565.1619 + 27.212220817 * k + T * T * (0.0002762 + T * (0.000000021 - T * 0.000000000088))
+    |     ^
+...
+842 |         + 0.0003 * ((2.0 * (M - D)).sin() + (2.0 * D_times_2 - M).sin() + V.sin() + P.sin()))
+    |                                                                                             ^
+    |
+    = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+    |
+823 ~     2451565.1619 + 27.212220817 * k + T * T * (0.0002762 + T * (0.000000021 - T * 0.000000000088))
+824 |         - 0.4721 * M1.sin()
+...
+841 |         + 0.0004 * (D_times_2 - M + M1).sin()
+842 ~         + 0.0003 * ((2.0 * (M - D)).sin() + (2.0 * D_times_2 - M).sin() + V.sin() + P.sin())
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:114:22
+    |
+114 |         &Moon::Io => (5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos()),
+    |                      ^                                         ^
+    |
+help: remove these parentheses
+    |
+114 -         &Moon::Io => (5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos()),
+114 +         &Moon::Io => 5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:115:26
+    |
+115 |         &Moon::Europa => (9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos()),
+    |                          ^                                         ^
+    |
+help: remove these parentheses
+    |
+115 -         &Moon::Europa => (9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos()),
+115 +         &Moon::Europa => 9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:116:28
+    |
+116 |         &Moon::Ganymede => (14.9883 - 0.0216 * G.cos()),
+    |                            ^                          ^
+    |
+help: remove these parentheses
+    |
+116 -         &Moon::Ganymede => (14.9883 - 0.0216 * G.cos()),
+116 +         &Moon::Ganymede => 14.9883 - 0.0216 * G.cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:117:28
+    |
+117 |         &Moon::Callisto => (26.3627 - 0.1939 * H.cos()),
+    |                            ^                          ^
+    |
+help: remove these parentheses
+    |
+117 -         &Moon::Callisto => (26.3627 - 0.1939 * H.cos()),
+117 +         &Moon::Callisto => 26.3627 - 0.1939 * H.cos(),
+    |
+
+warning: unnecessary parentheses around type
+   --> src/time.rs:218:55
+    |
+218 | pub fn is_leap_year(year: i16, cal_type: &CalType) -> (bool) {
+    |                                                       ^    ^
+    |
+help: remove these parentheses
+    |
+218 - pub fn is_leap_year(year: i16, cal_type: &CalType) -> (bool) {
+218 + pub fn is_leap_year(year: i16, cal_type: &CalType) -> bool {
+    |
+
+warning: `turquet` (lib) generated 6 warnings (run `cargo fix --lib -p turquet` to apply 6 suggestions)
+warning: unnecessary parentheses around function argument
+  --> tests/elliptic.rs:64:40
+   |
+64 |     assert_eq!(util::round_upto_digits((T - ascen), 4), 92.2998);
+   |                                        ^         ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+64 -     assert_eq!(util::round_upto_digits((T - ascen), 4), 92.2998);
+64 +     assert_eq!(util::round_upto_digits(T - ascen, 4), 92.2998);
+   |
+
+warning: unnecessary parentheses around function argument
+  --> tests/elliptic.rs:69:40
+   |
+69 |     assert_eq!(util::round_upto_digits((T - descend), 4), -28.9105);
+   |                                        ^           ^
+   |
+help: remove these parentheses
+   |
+69 -     assert_eq!(util::round_upto_digits((T - descend), 4), -28.9105);
+69 +     assert_eq!(util::round_upto_digits(T - descend, 4), -28.9105);
+   |
+
+warning: `turquet` (lib test) generated 6 warnings (6 duplicates)
+warning: `turquet` (test "elliptic") generated 2 warnings (run `cargo fix --test "elliptic" -p turquet` to apply 2 suggestions)
+warning: unused `#[macro_use]` import
+  --> tests/planet.rs:25:1
+   |
+25 | #[macro_use]
+   | ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary parentheses around function argument
+  --> tests/parabolic.rs:63:40
+   |
+63 |     assert_eq!(util::round_upto_digits((T - ascen), 2), 4354.65);
+   |                                        ^         ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+63 -     assert_eq!(util::round_upto_digits((T - ascen), 2), 4354.65);
+63 +     assert_eq!(util::round_upto_digits(T - ascen, 2), 4354.65);
+   |
+
+warning: unnecessary parentheses around function argument
+  --> tests/parabolic.rs:67:40
+   |
+67 |     assert_eq!(util::round_upto_digits((T - descend), 4), -28.3454);
+   |                                        ^           ^
+   |
+help: remove these parentheses
+   |
+67 -     assert_eq!(util::round_upto_digits((T - descend), 4), -28.3454);
+67 +     assert_eq!(util::round_upto_digits(T - descend, 4), -28.3454);
+   |
+
+warning: `turquet` (test "planet") generated 1 warning
+warning: `turquet` (test "parabolic") generated 2 warnings (run `cargo fix --test "parabolic" -p turquet` to apply 2 suggestions)
+warning: panic message contains an unused formatting placeholder
+  --> tests/cohort_vectors.rs:96:55
+   |
+96 |         "expected the committed cohort, compared only {compared} vectors"
+   |                                                       ^^^^^^^^^^
+   |
+   = note: this message is not used as a format string when given without arguments, but will be in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
+   = note: `#[warn(non_fmt_panics)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: add the missing argument
+   |
+96 |         "expected the committed cohort, compared only {compared} vectors", ...
+   |                                                                          +++++
+help: or add a "{}" format string to use the message literally
+   |
+96 |         "{}", "expected the committed cohort, compared only {compared} vectors"
+   |         +++++
+
+warning: panic message contains an unused formatting placeholder
+   --> tests/cohort_vectors.rs:131:40
+    |
+131 |             "vector header must record {expected}"
+    |                                        ^^^^^^^^^^
+    |
+    = note: this message is not used as a format string when given without arguments, but will be in Rust 2021
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
+help: add the missing argument
+    |
+131 |             "vector header must record {expected}", ...
+    |                                                   +++++
+help: or add a "{}" format string to use the message literally
+    |
+131 |             "{}", "vector header must record {expected}"
+    |             +++++
+
+warning: `turquet` (test "cohort_vectors") generated 2 warnings (run `cargo fix --test "cohort_vectors" -p turquet` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.31s
+     Running unittests src/lib.rs (target/build/debug/deps/turquet-e324194cd7134e5e)
+
+running 10 tests
+test events::altitude_crossing_tests::exact_sample_requires_crossing_signs_in_the_interior ... ok
+test events::altitude_crossing_tests::exact_derivative_zero_requires_two_sided_motion_reversal ... ok
+test events::altitude_crossing_tests::meridian_pole_is_a_zero_plateau_not_a_transit ... ok
+test events::altitude_crossing_tests::meridian_exact_root_requires_a_single_zero_sample_and_a_crossing ... ok
+test events::altitude_crossing_tests::search_boundary_zero_uses_the_available_one_sided_sign ... ok
+test events::altitude_crossing_tests::near_threshold_sample_without_an_extremum_is_unresolved ... ok
+test houses::tests::degenerate_horizon_and_poles_refuse ... ok
+test observer::tests::local_meridian_angles_match_sofa_apio_vector ... ok
+test houses::tests::horizon_root_is_rising_in_both_hemispheres_and_wraps ... ok
+test houses::tests::placidus_polar_boundary_and_nonfinite_solver_inputs_refuse ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/aberr.rs (target/build/debug/deps/aberr-c691e4f081284a1c)
+
+running 1 test
+test stell_aberr_in_eq_coords ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/altitude_crossings.rs (target/build/debug/deps/altitude_crossings-605a36d5a7601a06)
+
+running 13 tests
+test altitude_search_rejects_coarse_steps_and_nonphysical_thresholds ... ok
+test altitude_extremum_and_circumstance_searches_reject_unsafe_controls ... ok
+test meridian_transit_preserves_each_error_boundary ... ok
+test altitude_search_preserves_each_error_boundary ... ok
+test high_latitude_empty_result_makes_no_state_classification ... ok
+test boston_sun_has_one_ascending_and_one_descending_crossing ... ok
+test named_airless_rise_set_remains_a_caller_threshold_projection ... ok
+test conventional_policy_models_preserve_airless_parity_and_explicit_offsets ... ok
+test usno_standard_sun_and_moon_circumstances_use_topocentric_limbs ... ok
+test sampled_state_distinguishes_below_and_grazing_candidate ... ok
+test both_position_providers_match_direct_horizons_altitude_crossings ... ok
+test both_position_providers_match_direct_horizons_meridian_transits ... ok
+test both_position_providers_match_direct_horizons_altitude_extrema has been running for over 60 seconds
+test both_position_providers_match_direct_horizons_altitude_extrema ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 65.64s
+
+     Running tests/apparent.rs (target/build/debug/deps/apparent-3f4d9309b689eee4)
+
+running 9 tests
+test analytical_stage_order_is_explicit ... ok
+test j2000_noon_utc_is_the_standard_epoch_in_terrestrial_time ... ok
+test the_typed_epoch_and_civil_field_paths_agree ... ok
+test primary_states_disclose_units_model_and_accuracy ... ok
+test lunar_perigee_and_apogee_samples_match_horizons ... ok
+test range_violations_are_errors_rather_than_degradation ... ok
+test horizons_observer_longitudes_and_latitudes ... ok
+test mercury_station_is_bracketed_against_horizons ... ok
+test known_retrograde_states_at_the_2024_eclipse ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/cohort_vectors.rs (target/build/debug/deps/cohort_vectors-e370d7e0abc67c35)
+
+running 2 tests
+test the_vector_file_records_its_oracle ... ok
+test committed_de440s_vectors_hold ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.17s
+
+     Running tests/coords.rs (target/build/debug/deps/coords-2215de855aee9d40)
+
+running 3 tests
+test horizontal_to_equatorial_matches_sofa_validation_vector ... ok
+test equatorial_to_horizontal_matches_sofa_validation_vector ... ok
+test east_positive_longitude_advances_local_sidereal_time ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/distance_extrema.rs (target/build/debug/deps/distance_extrema-68f79453a087704e)
+
+running 5 tests
+test distance_extremum_search_validates_its_derivative_span ... ok
+test exact_samples_are_retained_but_boundaries_and_plateaus_are_omitted ... ok
+test distance_extrema_preserve_provider_errors_and_returned_epochs ... ok
+test synthetic_off_grid_extrema_are_ordered_and_provenanced ... ok
+test horizons_fixture_and_analytical_provider_find_captured_distance_extrema ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.26s
+
+     Running tests/earth.rs (target/build/debug/deps/earth-5d33101fd0e8368b)
+
+running 3 tests
+test radii ... ok
+test geodesic_dist ... ok
+test rho_sin_cos_phi ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ecliptic.rs (target/build/debug/deps/ecliptic-b7a6b6188c0eff5f)
+
+running 1 test
+test mn_oblq_Laskar ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/elliptic.rs (target/build/debug/deps/elliptic-7b1700a6205f1fa8)
+
+running 3 tests
+test ecc_anom ... ok
+test passage_through_nodes ... ok
+test vel ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/eop.rs (target/build/debug/deps/eop-90c5a0bcddbf63ab)
+
+running 11 tests
+test century_rule_crlf_and_atomic_parse_errors ... ok
+test leap_interval_is_refused_but_exact_observations_on_both_sides_work ... ok
+test interpolates_daily_observations_and_implements_existing_provider ... ok
+test single_knot_and_caller_formal_errors_are_retained ... ok
+test retains_source_final_b_values_units_and_identity ... ok
+test no_extrapolation_even_just_outside_endpoints ... ok
+test refuses_gaps_and_suspect_dut1_jumps_without_losing_knots ... ok
+test rejects_predictions_missing_b_and_bad_fixed_columns ... ok
+test rejects_empty_identity_empty_series_duplicates_and_reversed_samples ... ok
+test preserves_submicrosecond_request_parts_and_checks_sample_limit ... ok
+test validates_bounds_and_rejects_overflowing_tt ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/events.rs (target/build/debug/deps/events-0d6c136410ce5295)
+
+running 15 tests
+test lunar_eclipse_search_rejects_unsafe_spans ... ok
+test eclipse_geometry_refuses_a_body_inside_its_required_radius ... ok
+test longitude_wrap_is_refined_and_same_body_is_refused ... ok
+test lunar_phase_sequence_crosses_the_longitude_wrap ... ok
+test opposition_wrap_is_not_reported_as_a_conjunction ... ok
+test search_window_rejects_unsafe_controls ... ok
+test quadratic_longitude_reversal_is_refined_across_the_wrap ... ok
+test provider_failures_are_not_reported_as_an_empty_search ... ok
+test station_search_rejects_unsafe_velocity_spans ... ok
+test lunar_eclipse_circumstances_require_exterior_span_endpoints ... ok
+test eclipse_conjunction_matches_horizons_and_nasa_interval ... ok
+test mercury_direct_station_matches_horizons_provider ... ok
+test april_lunar_phases_match_horizons_and_nasa ... ok
+test eclipse_candidates_match_horizons_geometry_and_nasa_classes ... ok
+test lunar_eclipse_circumstances_match_horizons_and_nasa ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.57s
+
+     Running tests/foundation.rs (target/build/debug/deps/foundation-6aae7eea40001a33)
+
+running 8 tests
+test longitude_normalizes_and_frame_typed_direction_round_trips ... ok
+test observed_dut1_constructs_a_distinct_ut1_epoch ... ok
+test tt_epoch_round_trips_across_the_2016_leap_second ... ok
+test observer_states_the_geodetic_sign_and_height_contract ... ok
+test providers_disclose_accuracy_without_inventing_a_default ... ok
+test physical_values_reject_invalid_scalar_states ... ok
+test tt_epoch_conversion_retains_the_small_julian_date_part ... ok
+test tt_epoch_round_trip_recovers_an_ordinary_utc_label ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/houses.rs (target/build/debug/deps/houses-254c8c89a7c0121d)
+
+running 6 tests
+test independent_swiss_tropical_vectors ... ok
+test observed_zero_at_j2000_and_corrected_polar_boundary ... ok
+test observed_nonzero_polar_motion_rotates_zenith_and_preserves_eop ... ok
+test swiss_placidus_errors_are_explicit_without_fallback ... ok
+test observed_zero_polar_motion_agrees_with_legacy_geometry ... ok
+test independent_swiss_placidus_vectors_and_assignment ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.79s
+
+     Running tests/interpol.rs (target/build/debug/deps/interpol-5115f23f91d78484)
+
+running 2 tests
+test five_values ... ok
+test three_values ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/jupiter.rs (target/build/debug/deps/jupiter-90996917706dbb32)
+
+running 2 tests
+test moons ... ok
+test ephemeris ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/local_solar_eclipse.rs (target/build/debug/deps/local_solar_eclipse-f97d242529367aae)
+
+running 7 tests
+test local_search_rejects_ambiguous_circumstance_spans ... ok
+test local_circumstances_preserve_observer_error_boundaries ... ok
+test local_search_reports_when_its_contact_span_is_too_short ... ok
+test outside_the_local_footprint_returns_no_local_circumstances ... ok
+test local_geometry_retains_an_eclipse_after_its_sun_sets ... ok
+test horizons_fixture_repeats_local_classes_and_direct_horizon_geometry ... ok
+test analytical_local_eclipses_match_three_published_classes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 41.69s
+
+     Running tests/lunar.rs (target/build/debug/deps/lunar-c7729449e9222c68)
+
+running 7 tests
+test geocent_ecl_pos ... ok
+test liberations ... ok
+test phases ... ok
+test phase_selection_uses_the_nearest_lunation_before_2000 ... ok
+test quarter_phase_matches_nasa_phase_catalog ... ok
+test quarter_phase_uses_the_complete_meeus_correction ... ok
+test time_of_passage_through_nodes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lunar_illumination.rs (target/build/debug/deps/lunar_illumination-6640c1b5938bcefd)
+
+running 4 tests
+test lunar_illumination_retains_provider_provenance ... ok
+test lunar_illumination_preserves_position_and_geometry_errors ... ok
+test analytical_lunar_illumination_has_expected_phase_order ... ok
+test horizons_fixture_and_analytical_provider_match_reported_lunar_illumination ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/mars.rs (target/build/debug/deps/mars-3d157b7d781215e2)
+
+running 1 test
+test ephemeris ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/motion.rs (target/build/debug/deps/motion-bd85b26b31ce8b24)
+
+running 7 tests
+test finite_signed_rate_and_inclusive_near_station_policy ... ok
+test wrong_sample_epoch_is_rejected_and_equivalent_parts_are_accepted ... ok
+test unresolvable_epochs_and_ambiguous_half_turn_are_errors ... ok
+test endpoint_errors_are_preserved_with_sources ... ok
+test provider_neutral_signed_wrap_samples_and_source_identity ... ok
+test pluto_range_applies_to_both_samples ... ok
+test retained_swiss_motion_cohort ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running tests/near_parabolic.rs (target/build/debug/deps/near_parabolic-9af544c244936bc0)
+
+running 1 test
+test true_anom_and_rad_vec ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/nutation.rs (target/build/debug/deps/nutation-c4b9e7e6ef5a64a3)
+
+running 2 tests
+test nutation_in_eq_coords ... ok
+test nutation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/observer.rs (target/build/debug/deps/observer-fc13d5f7214d55c9)
+
+running 5 tests
+test constant_offset_earth_orientation_advances_ut1_and_keeps_identity ... ok
+test provider_neutral_transform_rejects_another_state_epoch ... ok
+test boston_eclipse_moon_matches_horizons ... ok
+test provider_neutral_transform_preserves_the_observer_projection ... ok
+test observer_cohort_matches_horizons ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
+
+     Running tests/orientation.rs (target/build/debug/deps/orientation-a6f83c7233631860)
+
+running 2 tests
+test iau_2006_2000a_rotation_matches_sofa_vector ... ok
+test iau_2006_adjusted_2000a_nutation_matches_sofa_vector ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/parabolic.rs (target/build/debug/deps/parabolic-6fdb7ccd5b21d20a)
+
+running 2 tests
+test passage_through_nodes ... ok
+test true_anom_and_rad_vec ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/parallax.rs (target/build/debug/deps/parallax-b6ff32b7efd3fcaf)
+
+running 1 test
+test topocent_eq_coords ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/planet.rs (target/build/debug/deps/planet-0c02d70ba8967cb7)
+
+running 4 tests
+test ecl_coords_to_FK5 ... ok
+test geocent_geomet_ecl_coords ... ok
+test heliocent_coords ... ok
+test geocent_apprnt_ecl_coords ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/precess.rs (target/build/debug/deps/precess-488f5577ad50e753)
+
+running 4 tests
+test annual_precess ... ok
+test precess_eq_coords ... ok
+test precess_ecl_coords ... ok
+test precess_orb_elements ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/saturn.rs (target/build/debug/deps/saturn-ef4fd12ace987364)
+
+running 2 tests
+test ring_elements ... ok
+test moons ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/star.rs (target/build/debug/deps/star-9e8b53f7c80ed924)
+
+running 1 test
+test eq_coords_frm_motion ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/sun.rs (target/build/debug/deps/sun-616f80621f501831)
+
+running 4 tests
+test approx_synd_rot ... ok
+test ephemeris ... ok
+test ecl_coords_to_FK5 ... ok
+test geocent_ecl_coords ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/time.rs (target/build/debug/deps/time-bf46b6342e5d7d48)
+
+running 4 tests
+test julian_day ... ok
+test sidreal_time ... ok
+test date_frm_julian_day ... ok
+test weekday_frm_date ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/transit.rs (target/build/debug/deps/transit-6739de8ec266b987)
+
+running 1 test
+test time ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/twilight.rs (target/build/debug/deps/twilight-8f3f898fa912dcbc)
+
+running 6 tests
+test twilight_propagates_fixture_position_errors ... ok
+test twilight_uses_existing_altitude_search_validation ... ok
+test high_latitude_solar_twilight_can_be_empty_without_classifying_visibility ... ok
+test solar_twilight_is_a_named_wrapper_over_airless_crossings ... ok
+test analytical_and_fixture_lanes_preserve_twilight_provenance ... ok
+test boston_sun_named_twilight_matches_direct_quantity_four_roots ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.95s
+
+   Doc-tests turquet
+warning: unnecessary parentheses around block return value
+   --> src/lunar.rs:823:5
+    |
+823 |     (2451565.1619 + 27.212220817 * k + T * T * (0.0002762 + T * (0.000000021 - T * 0.000000000088))
+    |     ^
+...
+842 |         + 0.0003 * ((2.0 * (M - D)).sin() + (2.0 * D_times_2 - M).sin() + V.sin() + P.sin()))
+    |                                                                                             ^
+    |
+    = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+    |
+823 ~     2451565.1619 + 27.212220817 * k + T * T * (0.0002762 + T * (0.000000021 - T * 0.000000000088))
+824 |         - 0.4721 * M1.sin()
+...
+841 |         + 0.0004 * (D_times_2 - M + M1).sin()
+842 ~         + 0.0003 * ((2.0 * (M - D)).sin() + (2.0 * D_times_2 - M).sin() + V.sin() + P.sin())
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:114:22
+    |
+114 |         &Moon::Io => (5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos()),
+    |                      ^                                         ^
+    |
+help: remove these parentheses
+    |
+114 -         &Moon::Io => (5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos()),
+114 +         &Moon::Io => 5.9057 - 0.0244 * (2.0 * (u1 - u2)).cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:115:26
+    |
+115 |         &Moon::Europa => (9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos()),
+    |                          ^                                         ^
+    |
+help: remove these parentheses
+    |
+115 -         &Moon::Europa => (9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos()),
+115 +         &Moon::Europa => 9.3966 - 0.0882 * (2.0 * (u2 - u3)).cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:116:28
+    |
+116 |         &Moon::Ganymede => (14.9883 - 0.0216 * G.cos()),
+    |                            ^                          ^
+    |
+help: remove these parentheses
+    |
+116 -         &Moon::Ganymede => (14.9883 - 0.0216 * G.cos()),
+116 +         &Moon::Ganymede => 14.9883 - 0.0216 * G.cos(),
+    |
+
+warning: unnecessary parentheses around match arm expression
+   --> src/planet/jupiter/moon.rs:117:28
+    |
+117 |         &Moon::Callisto => (26.3627 - 0.1939 * H.cos()),
+    |                            ^                          ^
+    |
+help: remove these parentheses
+    |
+117 -         &Moon::Callisto => (26.3627 - 0.1939 * H.cos()),
+117 +         &Moon::Callisto => 26.3627 - 0.1939 * H.cos(),
+    |
+
+warning: unnecessary parentheses around type
+   --> src/time.rs:218:55
+    |
+218 | pub fn is_leap_year(year: i16, cal_type: &CalType) -> (bool) {
+    |                                                       ^    ^
+    |
+help: remove these parentheses
+    |
+218 - pub fn is_leap_year(year: i16, cal_type: &CalType) -> (bool) {
+218 + pub fn is_leap_year(year: i16, cal_type: &CalType) -> bool {
+    |
+
+warning: 6 warnings emitted
+
+
+running 4 tests
+test src/orientation.rs - orientation::gcrs_to_true_equator (line 88) - compile fail ... ok
+test src/houses.rs - houses::calculate (line 95) - compile fail ... ok
+test src/orientation.rs - orientation::gcrs_to_true_equator (line 97) - compile fail ... ok
+test src/observer.rs - observer::EarthOrientation::new (line 47) - compile fail ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+

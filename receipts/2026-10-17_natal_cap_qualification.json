@@ -1,0 +1,12 @@
+{
+  "source": "8e3755bbd0d40343eb4750b072801c941ff32802",
+  "command": "cargo test --locked --offline",
+  "rustc": "1.97.1",
+  "cargo": "1.99.0",
+  "passed": 163,
+  "failed": 0,
+  "ignored": 0,
+  "full_log_sha256": "0609bf1a88f7a268768555f4c9e152a36425aa89369376899007af20c1edb10e",
+  "bound": "Kernel-free default suite only; optional verify/JPL lane not renewed",
+  "source_closure": "Working inputs snapshot taken during gate matches all current source/test/lock hashes exactly"
+}

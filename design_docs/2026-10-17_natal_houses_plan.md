@@ -50,3 +50,11 @@ Placidus divides semi-arcs, rejects polar/unsolved geometry, and never returns
 another house system. Independent motion and house oracle files and retained
 IERS final-observation excerpts qualify the bounded numerical slice separately
 from Cleromancy's consumer, resident and native gates, which remain pending.
+
+2026-10-17: immutable numerical source `8e3755bbd0d40343eb4750b072801c941ff32802`
+passes the complete default suite: 163 tests/doctests, zero failures or ignores.
+The source/test/lock input snapshot matches the committed edition. Canonical
+receipt: `receipts/2026-10-17_natal_cap_qualification.json`. The optional JPL
+verification lane is not renewed. Cleromancy's new supplemental receipt leaves
+its original planetary and house editions pinned separately; its native and
+receiving-owner qualification remain consumer-owned.
