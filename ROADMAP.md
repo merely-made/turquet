@@ -317,3 +317,16 @@ whose evidence is result-specific or absent.
 
 Done when two materially different consumers reuse the same celestial state
 and derivation receipt without duplicating the calculation.
+
+## Natal house geometry consumer checkpoint (2026-10-17)
+
+Turquet's typed `houses` module at immutable `e2f65c0` supplies tropical
+ascendant, MC, Whole Sign/Equal cusps and longitude-only house membership.
+All 139 default tests/doctests pass, including independent Swiss vectors and
+exact-ascendant boundary checks. Cleromancy `ca562db`, published with evidence
+at `1e1635c`, qualifies the explicit system choice and retained birth inputs,
+139/188 product tests, core 49/50/51 and four offline native processes with
+thirteen reviewed originals. Earlier T5b scene evidence retains its own scope;
+this bounded natal checkpoint does not renew unrelated scene/browser walls.
+See [the owning plan](design_docs/2026-10-17_natal_houses_plan.md) and
+`cleromancy/receipts/natal-houses-qualification_20261017.json`.
