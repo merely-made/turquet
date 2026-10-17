@@ -1,0 +1,11 @@
+{
+  "source": "4c27a6b2fe41147a9b36765058049dc9af02b398",
+  "default_suite": {
+    "passed": 139,
+    "ignored": 0
+  },
+  "log_sha256": "2d60634bc12c78a84899bdeffe2521dd4153556aba72fa4d23ce51ddc9af53cd",
+  "oracle_rows": 18,
+  "oracle_tolerance_degrees": 0.002,
+  "scope": "Default Rust suite and compile-fail docs; independent Swiss fixtures. No JPL verify-feature renewal or product native acceptance."
+}

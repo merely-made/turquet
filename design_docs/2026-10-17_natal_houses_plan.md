@@ -1,6 +1,6 @@
 # Tropical ascendant and house geometry
 
-**Status (2026-10-17):** implementation in progress.
+**Status (2026-10-17):** supplier geometry qualified; Cleromancy consumer qualification in progress.
 
 ## Findings
 
@@ -21,3 +21,5 @@ but no house geometry. Cleromancy's sealed natal v1 excludes houses.
 2026-10-17: Mark selected Whole Sign and Equal House first; no Placidus
 substitution or silent location inference. Pure geometry remains Turquet-owned;
 interpretation and admission remain consumer-owned.
+
+2026-10-17: source `4c27a6b` passes 139 default tests/doctests (0 ignored), including 18 independent Swiss geometry rows at a 0.002-degree bound and typed-time compile-fail checks. Receipt: `receipts/2026-10-17_natal_houses_qualification.json`. Earlier failed generated-fixture literal build remains external diagnostic evidence.
