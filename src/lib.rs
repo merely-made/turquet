@@ -46,6 +46,7 @@ mod consts;
 mod ecliptic;
 pub mod events;
 pub mod foundation;
+pub mod houses;
 mod interpol;
 mod lunar;
 mod misc;

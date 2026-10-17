@@ -45,3 +45,5 @@ the consumer plan locally.
 `PROJECT_DESCRIPTION.md` is reserved for the maintainer and is not present.
 Until it is supplied, the root `README.md` remains the available project
 description. This is the known local exception recorded by `DOC_POLICY.md`.
+
+- [2026-10-17_natal_houses_plan.md](2026-10-17_natal_houses_plan.md): typed tropical ascendant and Whole Sign/Equal geometry with independent fixtures.

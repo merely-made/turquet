@@ -1,0 +1,13 @@
+{
+  "status": "geometry and independent 18-row oracle gate pass; full suite and consumer qualification pending",
+  "baseline": "9d830e187153af8160d67317a34f5e502719fb0c",
+  "sources": {
+    "src/houses.rs": "4b185e35bdba80a808d1c488f20f4bb3840081ddfdf6df6cb32f6627ef832cbb",
+    "tests/houses.rs": "292d898824cd6d8a08a02946c944846e0dc5bb6ee8bbe17c8900654a03c71151",
+    "tests/vectors/natal_houses_swiss.json": "e5654eac37226f3a7b057c921e943169f2fc75516aa547ee68a10cd317a6f2f2"
+  },
+  "oracle_log": "\nrunning 1 test\ntest independent_swiss_tropical_vectors ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.71s\n\n",
+  "comparison_tolerance_degrees": 0.002,
+  "oracle_runtime": "pyswisseph 2.10.3.2, external fixture generator only",
+  "scope": "typed TT/UT1, true-obliquity tropical ascendant and MC; Whole Sign/Equal cusps; no polar motion/refraction; degenerate rising intersection refuses"
+}
