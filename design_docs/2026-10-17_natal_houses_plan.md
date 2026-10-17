@@ -58,3 +58,16 @@ receipt: `receipts/2026-10-17_natal_cap_qualification.json`. The optional JPL
 verification lane is not renewed. Cleromancy's new supplemental receipt leaves
 its original planetary and house editions pinned separately; its native and
 receiving-owner qualification remain consumer-owned.
+
+2026-10-17: the consumer cap is qualified and published at Cleromancy
+`8472bc8dca53c2646baea0f864db9d1d0578fd61` (implementation/native/software
+source `da495cf`). Product checks pass 145 default and 194 expanded tests, core
+55/56/57, four all-target checks and desktop build. Five actual offline native
+processes supply 22 reviewed originals and exact staged reopening of four natal
+readings and two reflections. The retained IERS observations, Placidus polar
+refusal and signed motion remain inspectable. Canonical consumer ledger:
+`cleromancy/receipts/natal-cap-qualification_20261017.json`. Mere receiving
+publication `175c4148a` preserves concurrent renderer/Cambium work; 225 full
+owner checks on `a4b770146` and three postmerge natal checks on `65e9a29a1`
+retain their separate identities. The numerical supplier remains immutable
+`8e3755bb`; these documentation commits do not create a new numerical edition.

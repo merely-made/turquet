@@ -47,3 +47,8 @@ Until it is supplied, the root `README.md` remains the available project
 description. This is the known local exception recorded by `DOC_POLICY.md`.
 
 - [2026-10-17_natal_houses_plan.md](2026-10-17_natal_houses_plan.md): typed tropical ascendant and Whole Sign/Equal geometry with independent fixtures.
+
+Natal cap (2026-10-17): signed apparent longitude motion, retained observed Earth
+orientation and Placidus are covered by the [house plan](2026-10-17_natal_houses_plan.md)
+and [frozen numerical qualification](../receipts/2026-10-17_natal_cap_qualification.json).
+Cleromancy owns the separate native and resident-consumer receipts.
