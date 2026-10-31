@@ -287,7 +287,7 @@ result into a persistent-state claim.
 ## T5a consumer-seam addendum: 2026-08-26
 
 The first Sky-home daily-timeline consumer is owned across the repository
-boundary by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`.
+boundary by `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
 Turquet does not duplicate that product plan. It records the two engine seams
 the consumer forced.
 

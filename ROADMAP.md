@@ -304,9 +304,9 @@ profile. See `receipts/2026-08-26_t5c_embedded_solar_tracker.md`.
 - Keep control policy, secrets, interpretation, and social authority outside
   the engine.
 
-T5a, T4j, T4k-a, T4k-b, and T4l are complete. The next acceptance proof is
-T5b Cleromancy, followed by T5c's bounded solar-tracker profile. T4m remains
-deferred until a consumer forces a sampled geometric availability window.
+T5a, T4j, T4k-a, T4k-b, T4l, and T5c are complete; T5b's Cleromancy status
+is recorded above. T4m remains deferred until a consumer forces a sampled
+geometric availability window.
 
 T5a's archived plan is
 `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
@@ -328,5 +328,5 @@ at `1e1635c`, qualifies the explicit system choice and retained birth inputs,
 139/188 product tests, core 49/50/51 and four offline native processes with
 thirteen reviewed originals. Earlier T5b scene evidence retains its own scope;
 this bounded natal checkpoint does not renew unrelated scene/browser walls.
-See [the owning plan](design_docs/2026-10-17_natal_houses_plan.md) and
+See [the archived plan](design_docs/archive_docs/2026-10-31/2026-10-17_natal_houses_plan.md) and
 `cleromancy/receipts/natal-houses-qualification_20261017.json`.

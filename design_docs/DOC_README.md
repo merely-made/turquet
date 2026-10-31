@@ -34,21 +34,18 @@ The T4i conventional rise/set plan is archived under
 `archive_docs/2026-08-25/`.
 Remaining event gates are canonical in `ROADMAP.md`.
 The cross-repository Sky-home consumer and its acceptance evidence are owned
-by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. Turquet should
+by `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`. Turquet should
 cite that plan and record only the engine contracts it forces, not duplicate
 the consumer plan locally.
-- [2026-08-26_t5c_embedded_solar_tracker_plan.md](2026-08-26_t5c_embedded_solar_tracker_plan.md):
-  landed core-only solar-tracker vector profile and its Turquet bridge.
+The landed T5c embedded solar-tracker plan and the completed natal house plan
+(typed tropical ascendant, Whole Sign/Equal and Placidus cusps, signed apparent
+longitude motion and retained observed Earth orientation) are archived under
+`archive_docs/2026-10-31/`. Natal cap evidence is the
+[frozen numerical qualification](../receipts/2026-10-17_natal_cap_qualification.json);
+Cleromancy owns the separate native and resident-consumer receipts.
 
 ## Maintainer-owned project description
 
 `PROJECT_DESCRIPTION.md` is reserved for the maintainer and is not present.
 Until it is supplied, the root `README.md` remains the available project
 description. This is the known local exception recorded by `DOC_POLICY.md`.
-
-- [2026-10-17_natal_houses_plan.md](2026-10-17_natal_houses_plan.md): typed tropical ascendant and Whole Sign/Equal geometry with independent fixtures.
-
-Natal cap (2026-10-17): signed apparent longitude motion, retained observed Earth
-orientation and Placidus are covered by the [house plan](2026-10-17_natal_houses_plan.md)
-and [frozen numerical qualification](../receipts/2026-10-17_natal_cap_qualification.json).
-Cleromancy owns the separate native and resident-consumer receipts.

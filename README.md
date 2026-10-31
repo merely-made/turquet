@@ -196,9 +196,9 @@ T4 still
 has bounded open slices for observer-relative solar contacts and local eclipse
 visibility, illuminated-fraction and distance facts/extrema, named twilight,
 and consumer-forced visibility windows. The first acceptance consumer is a
-Sky-home daily timeline; Cleromancy and an embedded solar-tracker profile
-follow the remaining event slices. That cross-repository consumer work is
-owned by `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`.
+Sky-home daily timeline; Cleromancy is the interpretive consumer, and the
+embedded solar-tracker profile above has landed. That cross-repository consumer work is
+owned by `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`.
 
 ## Verification
 

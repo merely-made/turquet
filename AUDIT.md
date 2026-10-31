@@ -208,7 +208,7 @@ airless crossings and separately establishes topocentric meridian transits.
 T4i adds conventional rise/set policy without converting it into a visibility
 claim. The first Sky-home consumer then forced the TT-to-epoch inverse and an
 optional provider-wide accuracy disclosure. Its cross-repository plan is owned
-at `turnstone/design_docs/2026-08-26_sky_home_timeline_plan.md`. T4j now adds
+at `turnstone/design_docs/archive_docs/2026-08-26/2026-08-26_sky_home_timeline_plan.md`. T4j now adds
 observer solar contacts and the deliberately narrow airless-horizon fact at
 greatest eclipse. T4k adds geocentric lunar illumination and apparent-range
 extrema, while T4l names caller-threshold airless solar crossings. General
