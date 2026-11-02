@@ -282,7 +282,7 @@ T5a landed as Turnstone's retained daily Sky pane, consuming Turquet 0.13.0 at
 `bc3c454f755d0bfd70ab48bd9556a1cda2213d41` through its public API. Exact
 focused tests and the headed day-change receipt landed in Turnstone at
 `c68da6146d2adabc8f3f18cdb60df8ba0310ab2f` and live at
-`turnstone/docs/receipts/sky_home_20260826/README.md`. T4k-a supplies lunar
+`Code/testing/turnstone/receipts/sky_home_20260826/README.md`. T4k-a supplies lunar
 illumination and T4k-b supplies provider-neutral distance extrema. T4l names
 caller-threshold airless solar twilight. T4m remains a deferred,
 consumer-forced sampled airless-above-threshold window, not a visibility claim.
