@@ -329,4 +329,4 @@ at `1e1635c`, qualifies the explicit system choice and retained birth inputs,
 thirteen reviewed originals. Earlier T5b scene evidence retains its own scope;
 this bounded natal checkpoint does not renew unrelated scene/browser walls.
 See [the archived plan](design_docs/archive_docs/2026-10-31/2026-10-17_natal_houses_plan.md) and
-`cleromancy/receipts/natal-houses-qualification_20261017.json`.
+`Code/testing/cleromancy/receipts/natal-houses-qualification_20261017.json`.

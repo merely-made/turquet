@@ -33,7 +33,7 @@ at main `1e1635c9554546aa366d032b533c6e794297bd7c`: 139/188 product tests,
 portable core 49/50/51, four all-target checks and four native processes with
 thirteen reviewed originals. Whole Sign/Equal and missing-coordinate outcomes
 retain exact saved natal/reflection values after fresh-process offline reopening.
-Canonical consumer evidence: `cleromancy/receipts/natal-houses-qualification_20261017.json`.
+Canonical consumer evidence: `Code/testing/cleromancy/receipts/natal-houses-qualification_20261017.json`.
 Mere main `34f7f08db` imports the immutable core and qualifies cross-application
 admission/refusal plus owner reopening after preserving incoming shared edits.
 The corrected supplier's locked build inputs are retained in
@@ -66,7 +66,7 @@ source `da495cf`). Product checks pass 145 default and 194 expanded tests, core
 processes supply 22 reviewed originals and exact staged reopening of four natal
 readings and two reflections. The retained IERS observations, Placidus polar
 refusal and signed motion remain inspectable. Canonical consumer ledger:
-`cleromancy/receipts/natal-cap-qualification_20261017.json`. Mere receiving
+`Code/testing/cleromancy/receipts/natal-cap-qualification_20261017.json`. Mere receiving
 publication `175c4148a` preserves concurrent renderer/Cambium work; 225 full
 owner checks on `a4b770146` and three postmerge natal checks on `65e9a29a1`
 retain their separate identities. The numerical supplier remains immutable
