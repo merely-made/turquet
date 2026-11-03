@@ -54,6 +54,7 @@ fn ring_elements() {
 
 #[test]
 #[allow(unused_variables)]
+#[allow(clippy::approx_constant)] // Rounded reference coordinates, not approximations of constants.
 fn moons() {
     let data = [
         (3.102, -0.204, planet::saturn::moon::Moon::Mimas),

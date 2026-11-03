@@ -1,0 +1,62 @@
+# mere/design_docs/mere_docs/implementation_strategy/2026-10-30_house_style_plan.md (H2); all physical source lines count.
+ceiling = 600
+
+[[exception]]
+path = "src/events.rs"
+reason = "Provider-neutral celestial event searches. Existing source-size debt; a responsibility split must preserve SearchWindow, SearchWindowError, AltitudeCrossingSearch and existing module visibility."
+
+[[exception]]
+path = "src/foundation.rs"
+reason = "Typed values shared by Turquet's primary calculation APIs. Existing source-size debt; a responsibility split must preserve ValueError, TerrestrialTime, UniversalTime1 and existing module visibility."
+
+[[exception]]
+path = "src/lunar.rs"
+reason = "The Earth's moon. Existing source-size debt; a responsibility split must preserve Phase and existing module visibility."
+
+[[exception]]
+path = "src/planet/VSOPD_87/earth.rs"
+reason = "Complete VSOP87D Earth coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/jupiter.rs"
+reason = "Complete VSOP87D Jupiter coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/mars.rs"
+reason = "Complete VSOP87D Mars coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/mercury.rs"
+reason = "Complete VSOP87D Mercury coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/neptune.rs"
+reason = "Complete VSOP87D Neptune coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/saturn.rs"
+reason = "Complete VSOP87D Saturn coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/uranus.rs"
+reason = "Complete VSOP87D Uranus coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/VSOPD_87/venus.rs"
+reason = "Complete VSOP87D Venus coefficient series; preserve coefficient order and decimal values as one reference table instead of arbitrary source fragments."
+
+[[exception]]
+path = "src/planet/mod.rs"
+reason = "8 Planets of the Solar System. Existing source-size debt; a responsibility split must preserve Planet and existing module visibility."
+
+[[exception]]
+path = "tests/altitude_crossings.rs"
+reason = "Altitude crossings. Existing source-size debt; a responsibility split must preserve HorizonsAltitudeRow, HorizonsAltitudeFixture, HorizonsAltitudeCase and existing module visibility."
+
+[[exception]]
+path = "tests/events.rs"
+reason = "Events. Existing source-size debt; a responsibility split must preserve FixtureRow, HorizonsFixtureProvider, FixtureError and existing module visibility."
+
+[[exception]]
+path = "tests/houses.rs"
+reason = "Houses. Existing source-size debt; a responsibility split must preserve existing entry points, fixture identity and module visibility."

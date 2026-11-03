@@ -1,3 +1,6 @@
+// These are reference coefficient decimals, including deliberately rounded phases.
+#![allow(clippy::approx_constant)]
+
 pub mod earth;
 pub mod jupiter;
 pub mod mars;
