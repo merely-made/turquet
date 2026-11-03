@@ -1,6 +1,6 @@
 # Turquet documentation
 
-Rust policy (2026-10-13): working toolchain 1.99.0 and shared MSRV 1.97.1, qualified separately. Canonical policy: `mere/design_docs/2026-08-12_family_composition_thesis_brief.md`, section "Shared Rust toolchain and minimum version".
+Rust policy (2026-10-13): working toolchain 1.99.1 and shared MSRV 1.97.1, qualified separately. Canonical policy: `mere/design_docs/2026-08-12_family_composition_thesis_brief.md`, section "Shared Rust toolchain and minimum version".
 
 This is the canonical index for active documents in `design_docs/`.
 
@@ -49,3 +49,5 @@ Cleromancy owns the separate native and resident-consumer receipts.
 `PROJECT_DESCRIPTION.md` is reserved for the maintainer and is not present.
 Until it is supplied, the root `README.md` remains the available project
 description. This is the known local exception recorded by `DOC_POLICY.md`.
+
+- [source_splits_plan](2026-11-03_source_splits_plan.md): H5 six landed numerical responsibility and verification-fixture splits; six exceptions retired.

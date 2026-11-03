@@ -54,119 +54,6 @@ pub enum Planet {
 }
 
 /**
-Computes the illuminated fraction of a planet's disk from it's phase
-angle
-
-# Returns
-
-* `illum_frac`: Illuminated fraction of the planet's disk
-
-# Arguments
-
-* `i`: Phase angle of the planet *| in radians*
-**/
-#[inline]
-pub fn illum_frac_frm_phase_angl(i: f64) -> f64 {
-    (1.0 + i.cos()) / 2.0
-}
-
-/**
-Computes the illuminated fraction of a planet's disk from it's distance
-to the Sun and Earth
-
-# Returns
-
-* `illum_frac`: Illuminated fraction of the planet's disk
-
-# Arguments
-
-* `r`    : Planet-Sun distance *| in AU*
-* `delta`: Planet-Earth distance *| in AU*
-* `R`    : Sun-Earth distance *| in AU*
-**/
-#[inline]
-pub fn illum_frac_frm_dist(r: f64, delta: f64, R: f64) -> f64 {
-    let x = r + delta;
-
-    (x * x - R * R) / (4.0 * r * delta)
-}
-
-/**
-Computes a planet's phase angle
-
-# Returns
-
-* `phase_angl`: Phase angle of the planet *| in radians*
-
-# Arguments
-
-* `r`    : Planet-Sun distance *| in AU*
-* `delta`: Planet-Earth distance *| in AU*
-* `R`    : Sun-Earth distance *| in AU*
-**/
-#[inline]
-pub fn phase_angl(r: f64, delta: f64, R: f64) -> f64 {
-    (r * r + delta * delta - R * R) / (2.0 * r * delta)
-}
-
-/**
-Computes the position angle of the bright limb of a planet
-
-# Returns
-
-* `pos_angl_of_bright_limb`: The position angle of the midpoint of
-                             the illuminated limb of a planet
-                             *| in radians*
-
-# Arguments
-
-* `sun_eq_point`   : Equatorial point of the Sun *| in radians*
-* `planet_eq_point`: Equatorial point of the planet *| in radians*
-**/
-pub fn pos_angle_of_bright_limb(
-    sun_eq_point: coords::EqPoint,
-    planet_eq_point: coords::EqPoint,
-) -> f64 {
-    let a = sun_eq_point.dec.cos();
-    let n = a * (sun_eq_point.asc - planet_eq_point.asc).sin();
-    let d = sun_eq_point.dec.sin() * planet_eq_point.dec.cos()
-        - planet_eq_point.dec.sin() * (sun_eq_point.asc - planet_eq_point.asc).cos() * a;
-
-    n.atan2(d)
-}
-
-/**
-Computes a planet's equatorial semidiameter
-
-# Returns
-
-* `semidiameter`: Equatorial semidiameter *| in radians*
-
-# Arguments
-
-* `planet`           : The [Planet](./enum.Planet.html)
-* `planet_earth_dist`: Planet-Earth distance *| in AU*
-**/
-pub fn semidiameter<'a>(planet: &Planet, planet_earth_dist: f64) -> Result<f64, &'a str> {
-    let s = match *planet {
-        Planet::Mercury => angle::deg_frm_dms(0, 0, 3.360).to_radians(),
-        Planet::Venus => angle::deg_frm_dms(0, 0, 8.410).to_radians(),
-        Planet::Mars => angle::deg_frm_dms(0, 0, 4.680).to_radians(),
-        Planet::Uranus => angle::deg_frm_dms(0, 0, 35.02).to_radians(),
-        Planet::Neptune => angle::deg_frm_dms(0, 0, 33.50).to_radians(),
-
-        Planet::Jupiter => jupiter::eq_semidiameter(1.0),
-        Planet::Saturn => saturn::eq_semidiameter(1.0),
-
-        Planet::Earth => {
-            return Err("Planet::Earth was passed to the function planet::semidiameter()");
-        }
-    };
-
-    Ok(s / planet_earth_dist)
-}
-
-/**
 Computes a planet's orbital elements, referred to the mean equinox of
 the date
 
@@ -211,7 +98,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 7.004986 + 0.0018215 * T - 0.0000181 * TT + 0.000000056 * TTT;
             omega = 48.330893 + 1.1861883 * T + 0.00017542 * TT + 0.000000215 * TTT;
             pi = 77.456119 + 1.5564776 * T + 0.00029544 * TT + 0.000000009 * TTT;
-        }
+        },
 
         &Planet::Venus => {
             L = 181.979801 + 58519.2130302 * T + 0.00031014 * TT + 0.000000015 * TTT;
@@ -220,7 +107,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 3.394662 + 0.0010037 * T - 0.00000088 * TT - 0.000000007 * TTT;
             omega = 76.67992 + 0.9011206 * T + 0.00040618 * TT - 0.000000093 * TTT;
             pi = 131.563703 + 1.4022288 * T - 0.00107618 * TT - 0.000005678 * TTT;
-        }
+        },
 
         &Planet::Earth => {
             L = 100.466457 + 36000.7698278 * T + 0.00030322 * TT + 0.00000002 * TTT;
@@ -229,7 +116,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 0.0;
             pi = 102.937348 + 1.7195366 * T + 0.00045688 * TT - 0.000000018 * TTT;
             omega = 0.0
-        }
+        },
 
         &Planet::Mars => {
             L = 355.433 + 19141.6964471 * T + 0.00031052 * TT + 0.000000016 * TTT;
@@ -238,7 +125,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 1.849726 - 0.0006011 * T + 0.00001276 * TT - 0.000000007 * TTT;
             omega = 49.558093 + 0.7720959 * T + 0.00001557 * TT - 0.000002267 * TTT;
             pi = 336.060234 + 1.8410449 * T + 0.00013477 * TT + 0.000000536 * TTT;
-        }
+        },
 
         &Planet::Jupiter => {
             L = 34.351519 + 3036.3027748 * T + 0.0002233 * TT + 0.000000037 * TTT;
@@ -247,7 +134,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 1.303267 - 0.0054965 * T + 0.00000466 * TT - 0.000000002 * TTT;
             omega = 100.464407 + 1.0209774 * T + 0.00040315 * TT + 0.000000404 * TTT;
             pi = 14.331207 + 1.6126352 * T + 0.00103042 * TT - 0.000004464 * TTT;
-        }
+        },
 
         &Planet::Saturn => {
             L = 50.077444 + 1223.5110686 * T + 0.00051908 * TT - 0.00000003 * TTT;
@@ -256,7 +143,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 2.488879 - 0.0037362 * T - 0.00001519 * TT + 0.000000087 * TTT;
             omega = 113.665503 + 0.877088 * T - 0.00012176 * TT - 0.000002249 * TTT;
             pi = 93.057237 + 1.9637613 * T + 0.00083753 * TT + 0.000004928 * TTT;
-        }
+        },
 
         &Planet::Uranus => {
             L = 314.055005 + 429.8640561 * T + 0.0003039 * TT - 0.000000026 * TTT;
@@ -265,7 +152,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 0.773197 + 0.0007744 * T + 0.00003749 * TT - 0.000000092 * TTT;
             omega = 74.005957 + 0.5211278 * T + 0.00133947 * TT + 0.000018484 * TTT;
             pi = 173.005291 + 1.486379 * T + 0.00021406 * TT + 0.000000434 * TTT;
-        }
+        },
 
         &Planet::Neptune => {
             L = 304.348665 + 219.8833092 * T + 0.00030882 * TT + 0.000000018 * TTT;
@@ -274,7 +161,7 @@ pub fn orb_elements(planet: &Planet, JD: f64) -> (f64, f64, f64, f64, f64, f64, 
             i = 1.769953 - 0.0093082 * T - 0.00000708 * TT + 0.000000027 * TTT;
             omega = 131.784057 + 1.1022039 * T + 0.00025952 * TT - 0.000000637 * TTT;
             pi = 48.120276 + 1.4262957 * T + 0.00038434 * TT + 0.00000002 * TTT;
-        }
+        },
     };
 
     (
@@ -594,69 +481,9 @@ pub fn heliocent_coords_frm_orb_elements(i: f64, sigma: f64, w: f64, v: f64, r: 
     (y.atan2(x), z.atan2((x * x + y * y).sqrt()))
 }
 
-/**
-Computes a planet's apparent magnitude using G. Muller's formulae
+mod photometry;
 
-# Returns
-
-* `app_mag`: Apparent magnitude of the planet
-
-# Arguments
-
-* `planet`: Any variant of [Planet](./enum.Planet.html)
-* `i`     : Phase angle of the planet *| in radians*
-* `delta` : Planet-Earth distance *| in AU*
-* `r`     : Planet-Sun distance *| in AU*
-**/
-pub fn apprnt_mag_muller<'a>(planet: &Planet, i: f64, delta: f64, r: f64) -> Result<f64, &'a str> {
-    let x = 5.0 * (r * delta).log10();
-
-    match *planet {
-        Planet::Mercury => Ok(x + 1.16 + (i - 50.0) * (0.02838 + (i - 50.0) * 0.000102)),
-        Planet::Venus => Ok(x - 4.0 + i * (0.01322 + i * i * 0.0000004247)),
-        Planet::Earth => {
-            return Err("Planet::Earth was passed to the function planet::apprnt_mag_muller()");
-        }
-        Planet::Mars => Ok(x - 1.3 + i * 0.01486),
-        Planet::Jupiter => Ok(x - 8.93),
-        Planet::Saturn => {
-            return Err("Planet::Saturn was passed to the function planet::apprnt_mag_muller(). Use the function planet::saturn::apprnt_mag_muller() instead.");
-        }
-        Planet::Uranus => Ok(x - 6.85),
-        Planet::Neptune => Ok(x - 7.05),
-    }
-}
-
-/**
-Computes a planet's apparent magnitude using the Astronomical
-Almanac's method adopted in 1984
-
-# Returns
-
-* `app_mag`: Apparent magnitude of the planet
-
-# Arguments
-
-* `planet`: Any variant of [Planet](./enum.Planet.html)
-* `i`     : Phase angle of the planet *| in radians*
-* `delta` : Planet-Earth distance *| in AU*
-* `r`     : Planet-Sun distance *| in AU*
-**/
-pub fn apprnt_mag_84<'a>(planet: &Planet, i: f64, delta: f64, r: f64) -> Result<f64, &'a str> {
-    let x = 5.0 * (r * delta).log10();
-
-    match *planet {
-        Planet::Mercury => Ok(x - 0.42 + i * (0.0380 - i * (0.000273 - i * 0.00000200))),
-        Planet::Venus => Ok(x - 4.40 + i * (0.0009 + i * (0.000239 - i * 0.00000065))),
-        Planet::Earth => {
-            return Err("Planet::Earth was passed to the function planet::apprnt_mag_84()");
-        }
-        Planet::Mars => Ok(x - 1.52 + i * 0.016),
-        Planet::Jupiter => Ok(x - 9.4 + i * 0.005),
-        Planet::Saturn => {
-            return Err("Planet::Saturn was passed to the function planet::apprnt_mag_84(). Use the function planet::saturn::apprnt_mag_84() instead.");
-        }
-        Planet::Uranus => Ok(x - 7.19),
-        Planet::Neptune => Ok(x - 6.87),
-    }
-}
+pub use self::photometry::{
+    apprnt_mag_84, apprnt_mag_muller, illum_frac_frm_dist, illum_frac_frm_phase_angl, phase_angl,
+    pos_angle_of_bright_limb, semidiameter,
+};
