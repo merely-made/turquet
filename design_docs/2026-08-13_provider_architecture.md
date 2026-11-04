@@ -1,5 +1,7 @@
 # Provider architecture and the kernel-free default
 
+Historical snapshot as of the 2026-11-04 source move. Maintained source and plans now live in [Cleromancy](https://github.com/merely-made/cleromancy/tree/3e97e1375723a16f1877bc7a9ee136800d09de5e); this file and old receipts retain their recorded inputs.
+
 **Date:** 2026-08-13
 **Scope:** reconciles the maintainer's composition analysis (kernel-free,
 Rust-owned default; ANISE as verifier) against the measured state at founding,

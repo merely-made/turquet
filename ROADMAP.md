@@ -1,5 +1,7 @@
 # Adoption roadmap
 
+Historical snapshot as of the 2026-11-04 source move. Maintained source and plans now live in [Cleromancy](https://github.com/merely-made/cleromancy/tree/3e97e1375723a16f1877bc7a9ee136800d09de5e); this file and old receipts retain their recorded inputs.
+
 Turquet's first objective is a trustworthy celestial fact engine. Completing
 the inherited catalogue of algorithms follows that foundation.
 

@@ -1,5 +1,7 @@
 # Turquet documentation
 
+Historical snapshot as of the 2026-11-04 source move. Maintained source and plans now live in [Cleromancy](https://github.com/merely-made/cleromancy/tree/3e97e1375723a16f1877bc7a9ee136800d09de5e); this file and old receipts retain their recorded inputs.
+
 Rust policy (2026-10-13): working toolchain 1.99.1 and shared MSRV 1.97.1, qualified separately. Canonical policy: `mere/design_docs/2026-08-12_family_composition_thesis_brief.md`, section "Shared Rust toolchain and minimum version".
 
 This is the canonical index for active documents in `design_docs/`.
